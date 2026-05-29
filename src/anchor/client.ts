@@ -98,6 +98,19 @@ export function derivePolicyPda(vault: PublicKey): [PublicKey, number] {
 /**
  * Returns null if the vault account does not exist. Any other error
  * propagates — the caller should surface it (devnet RPC down, etc.).
+ *
+ * RN quirk: @coral-xyz/anchor@0.32 depends on the legacy `buffer-layout`
+ * package, which calls `b.readUIntLE` directly without wrapping
+ * Uint8Array → Buffer first. If anything in the connection/coder path
+ * returns plain Uint8Array (Metro can serve a different `buffer`
+ * instance through transitive deps than the one our polyfill installs
+ * on `globalThis`), the decode blows up with
+ *   "b.readUIntLE is not a function (it is undefined)".
+ *
+ * We dodge this by fetching the raw account ourselves, re-wrapping the
+ * data with `Buffer.from(...)` to guarantee a full-API Buffer, then
+ * driving the coder directly. `Buffer.from(uint8array)` returns a
+ * Buffer view sharing the same underlying ArrayBuffer — no copy.
  */
 export async function fetchVault(
   client: PocketClient,
@@ -105,8 +118,17 @@ export async function fetchVault(
 ): Promise<{ vault: PublicKey; data: VaultAccount } | null> {
   const [vault] = deriveVaultPda(authority)
   try {
-    const data = await client.program.account.vault.fetch(vault)
-    return { vault, data: data as VaultAccount }
+    const accountInfo = await client.connection.getAccountInfo(
+      vault,
+      'confirmed',
+    )
+    if (!accountInfo) return null
+    const buf = Buffer.from(accountInfo.data)
+    const data = client.program.coder.accounts.decode<VaultAccount>(
+      'vault',
+      buf,
+    )
+    return { vault, data }
   } catch (e) {
     if (isAccountNotFound(e)) return null
     throw e
@@ -119,8 +141,17 @@ export async function fetchPolicy(
 ): Promise<{ policy: PublicKey; data: PolicyAccount } | null> {
   const [policy] = derivePolicyPda(vault)
   try {
-    const data = await client.program.account.policy.fetch(policy)
-    return { policy, data: data as PolicyAccount }
+    const accountInfo = await client.connection.getAccountInfo(
+      policy,
+      'confirmed',
+    )
+    if (!accountInfo) return null
+    const buf = Buffer.from(accountInfo.data)
+    const data = client.program.coder.accounts.decode<PolicyAccount>(
+      'policy',
+      buf,
+    )
+    return { policy, data }
   } catch (e) {
     if (isAccountNotFound(e)) return null
     throw e
