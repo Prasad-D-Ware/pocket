@@ -13,6 +13,8 @@
     "lint": "expo lint --fix",
     "lint:check": "expo lint",
     "start": "expo start",
+    "test": "tsx --test src/policy/__tests__/*.test.ts",
+    "test:policy": "tsx --test src/policy/__tests__/*.test.ts",
     "web": "expo start --web"
   },
   "displayName": "Pocket",
@@ -45,13 +47,15 @@
     "react-native-safe-area-context": "~5.6.2",
     "react-native-screens": "~4.23.0",
     "tailwindcss": "~4.1.16",
-    "uniwind": "~1.0.0"
+    "uniwind": "~1.0.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/react": "~19.2.14",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~55.0.0",
     "prettier": "^3.8.1",
+    "tsx": "^4.22.3",
     "typescript": "~5.9.2"
   },
   "private": true,
