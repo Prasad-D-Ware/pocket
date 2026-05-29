@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "scheme": "pocket",
+    "userInterfaceStyle": "automatic",
+    "orientation": "default",
+    "web": {
+      "output": "static"
+    },
+    "name": "pocket",
+    "slug": "pocket",
+    "android": {
+      "package": "com.pocket.wallet"
+    },
+    "plugins": ["expo-router"]
+  }
+}
