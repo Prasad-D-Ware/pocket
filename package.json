@@ -31,9 +31,13 @@
   "main": "./index.js",
   "version": "1.0.0",
   "dependencies": {
+    "@coral-xyz/anchor": "^0.32.1",
     "@expo/metro-runtime": "~55.0.6",
     "@solana/kit": "^6.1.0",
+    "@solana/spl-token": "^0.4.14",
+    "@solana/web3.js": "^1.98.4",
     "@wallet-ui/react-native-kit": "^4.0.1",
+    "buffer": "^6.0.3",
     "expo": "~55.0.23",
     "expo-constants": "~55.0.9",
     "expo-dev-client": "^55.0.18",

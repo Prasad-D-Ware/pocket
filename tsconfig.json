@@ -2,5 +2,11 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true
-  }
+  },
+  "include": ["src/**/*", "polyfill.js", "index.js"],
+  "exclude": [
+    "node_modules",
+    "anchor",
+    "src/policy/__tests__"
+  ]
 }

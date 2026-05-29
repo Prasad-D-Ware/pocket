@@ -1,42 +1,56 @@
 import { StatusBar } from 'expo-status-bar'
 import { Text, View, Pressable } from 'react-native'
+import { Link } from 'expo-router'
 import { useMobileWallet } from '@wallet-ui/react-native-kit'
 
-export default function App() {
+export default function Home() {
   const { account, connect, disconnect } = useMobileWallet()
 
   return (
     <View className="flex-1 bg-white dark:bg-black items-center justify-center px-8">
-      {/* Heading */}
-      <Text className="text-4xl font-extrabold text-gray-800 dark:text-white mb-3 tracking-tight">🚀 Welcome</Text>
-
-      {/* Subheading */}
-      <Text className="text-xl dark:text-white text-gray-700 mb-8 text-center leading-relaxed">
-        Build beautiful apps with <Text className="text-blue-500 font-semibold">Expo + Uniwind + @solana/kit 🔥</Text>
+      <Text className="text-4xl font-extrabold text-gray-900 dark:text-white mb-2 tracking-tight">
+        Pocket
+      </Text>
+      <Text className="text-base text-gray-600 dark:text-gray-300 mb-10 text-center leading-relaxed">
+        Mobile-native Solana wallet for AI agents{'\n'}
+        Policy-bound signing · Pay.sh / x402 · devnet
       </Text>
 
-      <View className="mb-8 items-center">
+      <Link href="/vault" asChild>
+        <Pressable className="bg-blue-600 px-8 py-4 rounded-xl active:bg-blue-700 mb-3">
+          <Text className="text-white font-bold text-base">Open Vault</Text>
+        </Pressable>
+      </Link>
+      <Text className="text-xs text-gray-500 dark:text-gray-400 mb-10">
+        Reads live state from devnet
+      </Text>
+
+      <View className="items-center">
         {account ? (
           <View className="items-center">
-            <Text className="text-gray-600 dark:text-gray-400 mb-2">
-              Connected: {account.address.toString().slice(0, 8)}...
+            <Text className="text-gray-600 dark:text-gray-400 text-sm mb-2">
+              Wallet: {account.address.toString().slice(0, 8)}…
             </Text>
-            <Pressable onPress={disconnect} className="bg-red-500 px-6 py-3 rounded-xl active:bg-red-600">
-              <Text className="text-white font-bold">Disconnect Wallet</Text>
+            <Pressable
+              onPress={disconnect}
+              className="bg-red-500 px-5 py-2.5 rounded-xl active:bg-red-600"
+            >
+              <Text className="text-white font-semibold text-sm">
+                Disconnect Wallet
+              </Text>
             </Pressable>
           </View>
         ) : (
-          <Pressable onPress={connect} className="bg-blue-600 px-6 py-3 rounded-xl active:bg-blue-700">
-            <Text className="text-white font-bold text-lg">Connect Wallet</Text>
+          <Pressable
+            onPress={connect}
+            className="bg-gray-200 dark:bg-gray-800 px-5 py-2.5 rounded-xl active:bg-gray-300 dark:active:bg-gray-700"
+          >
+            <Text className="text-gray-800 dark:text-gray-200 font-semibold text-sm">
+              Connect external wallet (legacy)
+            </Text>
           </Pressable>
         )}
       </View>
-
-      {/* Instruction text */}
-      <Text className="text-base text-gray-600 dark:text-white text-center max-w-sm">
-        Start customizing your app by editing{' '}
-        <Text className="font-semibold text-gray-800 dark:text-white">app/index.tsx</Text>
-      </Text>
 
       <StatusBar style="auto" />
     </View>
