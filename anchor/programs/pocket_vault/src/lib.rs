@@ -1,19 +1,18 @@
 // pocket_vault — Pocket's onchain policy-enforced sub-account vault.
 //
-// Day 4 surface (this file): open_vault + deposit.
-// Day 5 will add: set_policy + withdraw_under_policy + close_vault.
+// Day 4 surface: open_vault + deposit.
+// Day 5 surface (added below): set_policy + withdraw_under_policy.
 //
-// Architecture: one Vault PDA per (authority) for v1. Authority opens
-// the vault once, deposits the policy-asset (USDC for v1), and later
-// withdraws under enforced policy. The vault token account is an ATA
-// owned by the vault PDA, so the program is the only thing that can
-// move funds out — meaning a compromised wallet key cannot drain past
-// the policy limits.
+// Defense in depth. The off-chain PolicyGuard (src/policy/) has a rich
+// policy with program/mint/host allowlists, x402 host rules, etc. The
+// on-chain Policy here is a smaller, monetary-only subset: per-tx cap,
+// rolling daily cap, and an expiry slot. Even a compromised wallet key
+// cannot bypass these — the vault ATA is owned by the program PDA, and
+// the program won't sign a TransferChecked CPI unless every check
+// passes.
 //
-// v1 targets classic SPL Token only (devnet USDC). Token-2022 paths
-// are deferred to v2 — they pull in spl-token-confidential-transfer
-// which currently requires a Rust edition newer than the SBF
-// platform-tools v1.51 toolchain ships (rustc 1.84 vs needed 1.85).
+// v1 targets classic SPL Token only (devnet USDC). Token-2022 deferred
+// to v2.
 
 use anchor_lang::prelude::*;
 use anchor_spl::{
@@ -57,6 +56,120 @@ pub mod pocket_vault {
         let vault = &mut ctx.accounts.vault;
         vault.total_deposited = vault
             .total_deposited
+            .checked_add(amount)
+            .ok_or(VaultError::Overflow)?;
+        Ok(())
+    }
+
+    // Day 5: install or update the on-chain policy for this vault.
+    // init_if_needed so the authority can update limits at any time
+    // (e.g. raise the daily cap, push expiry out). Updating resets the
+    // current daily window's spent counter to 0 and re-seeds the
+    // window start to the current slot — intentional, since changing
+    // limits should give the user a fresh budget rather than
+    // half-overlapping the previous one.
+    pub fn set_policy(
+        ctx: Context<SetPolicy>,
+        max_per_tx_base_units: u64,
+        max_per_day_base_units: u64,
+        expiry_slot: u64,
+        slots_per_window: u64,
+    ) -> Result<()> {
+        require!(
+            max_per_day_base_units >= max_per_tx_base_units,
+            VaultError::InvalidPolicyLimits
+        );
+        require_gt!(slots_per_window, 0, VaultError::InvalidPolicyLimits);
+
+        let current_slot = Clock::get()?.slot;
+        let policy = &mut ctx.accounts.policy;
+        policy.vault = ctx.accounts.vault.key();
+        policy.max_per_tx_base_units = max_per_tx_base_units;
+        policy.max_per_day_base_units = max_per_day_base_units;
+        policy.expiry_slot = expiry_slot; // 0 = never expires
+        policy.slots_per_window = slots_per_window;
+        policy.daily_window_start_slot = current_slot;
+        policy.spent_in_window = 0;
+        policy.bump = ctx.bumps.policy;
+
+        ctx.accounts.vault.policy_set = true;
+        Ok(())
+    }
+
+    // Day 5: withdraw `amount` from the vault to `recipient_token_account`,
+    // gated by the on-chain Policy. The vault PDA signs the CPI, so the
+    // recipient does not need to be related to the authority — this is the
+    // path agents use to pay arbitrary endpoints under policy.
+    pub fn withdraw_under_policy(
+        ctx: Context<WithdrawUnderPolicy>,
+        amount: u64,
+    ) -> Result<()> {
+        require_gt!(amount, 0, VaultError::ZeroAmount);
+        require!(ctx.accounts.vault.policy_set, VaultError::NoPolicy);
+
+        let current_slot = Clock::get()?.slot;
+        let policy = &mut ctx.accounts.policy;
+
+        // Expiry — expiry_slot of 0 is the "never expires" sentinel.
+        if policy.expiry_slot != 0 {
+            require!(
+                current_slot <= policy.expiry_slot,
+                VaultError::PolicyExpired
+            );
+        }
+
+        // Per-tx cap.
+        require!(
+            amount <= policy.max_per_tx_base_units,
+            VaultError::AmountExceeded
+        );
+
+        // Sliding daily window: if we've crossed past the window's end,
+        // start a fresh window from this slot. saturating_add so a
+        // bogus far-future window_start doesn't underflow into "always
+        // rolled over".
+        let window_end = policy
+            .daily_window_start_slot
+            .saturating_add(policy.slots_per_window);
+        if current_slot >= window_end {
+            policy.daily_window_start_slot = current_slot;
+            policy.spent_in_window = 0;
+        }
+
+        // Daily cap.
+        let projected = policy
+            .spent_in_window
+            .checked_add(amount)
+            .ok_or(VaultError::Overflow)?;
+        require!(
+            projected <= policy.max_per_day_base_units,
+            VaultError::DailyCapExceeded
+        );
+
+        // CPI TransferChecked signed by the vault PDA.
+        let authority_key = ctx.accounts.authority.key();
+        let vault_bump = ctx.accounts.vault.bump;
+        let signer_seeds: &[&[&[u8]]] =
+            &[&[b"vault", authority_key.as_ref(), &[vault_bump]]];
+
+        let cpi_accounts = TransferChecked {
+            from: ctx.accounts.vault_token_account.to_account_info(),
+            mint: ctx.accounts.mint.to_account_info(),
+            to: ctx.accounts.recipient_token_account.to_account_info(),
+            authority: ctx.accounts.vault.to_account_info(),
+        };
+        let cpi_ctx = CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            cpi_accounts,
+            signer_seeds,
+        );
+        transfer_checked(cpi_ctx, amount, ctx.accounts.mint.decimals)?;
+
+        // Bump counters after the CPI succeeds.
+        policy.spent_in_window = projected;
+        let vault = &mut ctx.accounts.vault;
+        vault.total_withdrawn = vault
+            .total_withdrawn
             .checked_add(amount)
             .ok_or(VaultError::Overflow)?;
         Ok(())
@@ -123,6 +236,68 @@ pub struct Deposit<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+#[derive(Accounts)]
+pub struct SetPolicy<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [b"vault", authority.key().as_ref()],
+        bump = vault.bump,
+    )]
+    pub vault: Account<'info, Vault>,
+
+    #[account(
+        init_if_needed,
+        payer = authority,
+        space = Policy::SPACE,
+        seeds = [b"policy", vault.key().as_ref()],
+        bump,
+    )]
+    pub policy: Account<'info, Policy>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct WithdrawUnderPolicy<'info> {
+    pub authority: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [b"vault", authority.key().as_ref()],
+        bump = vault.bump,
+        has_one = mint,
+    )]
+    pub vault: Account<'info, Vault>,
+
+    #[account(
+        mut,
+        seeds = [b"policy", vault.key().as_ref()],
+        bump = policy.bump,
+        has_one = vault,
+    )]
+    pub policy: Account<'info, Policy>,
+
+    pub mint: Account<'info, Mint>,
+
+    #[account(
+        mut,
+        associated_token::mint = mint,
+        associated_token::authority = vault,
+    )]
+    pub vault_token_account: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        token::mint = mint,
+    )]
+    pub recipient_token_account: Account<'info, TokenAccount>,
+
+    pub token_program: Program<'info, Token>,
+}
+
 #[account]
 pub struct Vault {
     pub authority: Pubkey,
@@ -145,10 +320,44 @@ impl Vault {
         + 1;                    // policy_set
 }
 
+#[account]
+pub struct Policy {
+    pub vault: Pubkey,
+    pub max_per_tx_base_units: u64,
+    pub max_per_day_base_units: u64,
+    pub expiry_slot: u64,
+    pub daily_window_start_slot: u64,
+    pub spent_in_window: u64,
+    pub slots_per_window: u64,
+    pub bump: u8,
+}
+
+impl Policy {
+    pub const SPACE: usize = 8  // anchor discriminator
+        + 32                    // vault
+        + 8                     // max_per_tx_base_units
+        + 8                     // max_per_day_base_units
+        + 8                     // expiry_slot
+        + 8                     // daily_window_start_slot
+        + 8                     // spent_in_window
+        + 8                     // slots_per_window
+        + 1;                    // bump
+}
+
 #[error_code]
 pub enum VaultError {
     #[msg("Amount must be greater than zero")]
     ZeroAmount,
     #[msg("Arithmetic overflow")]
     Overflow,
+    #[msg("No policy set on this vault")]
+    NoPolicy,
+    #[msg("Policy has expired")]
+    PolicyExpired,
+    #[msg("Amount exceeds per-tx policy limit")]
+    AmountExceeded,
+    #[msg("Withdraw would exceed the policy daily cap")]
+    DailyCapExceeded,
+    #[msg("Invalid policy: max_per_day must be >= max_per_tx and slots_per_window > 0")]
+    InvalidPolicyLimits,
 }
