@@ -4,23 +4,27 @@ const { withUniwindConfig } = require('uniwind/metro')
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname)
 
-// Solana RN ecosystem compatibility. @solana/web3.js (v1, pulled in by
-// @coral-xyz/anchor) reaches into:
-//   - @noble/hashes/crypto.js — sub-path not in the package's exports map
-//   - rpc-websockets — exports map has no react-native / android condition
-// Disabling the new package-exports resolver makes Metro fall back to the
-// older main / file-based resolution, which is what these calls already
-// resolve through. This silences the warnings without changing behavior.
-config.resolver.unstable_enablePackageExports = false
-
-// Some web3.js v1 paths reference node:stream / node:events — point them
-// at empty shims if they show up. Most of these never execute on the
-// RN side; they're dead branches kept by the bundler.
-config.resolver.extraNodeModules = {
-  ...config.resolver.extraNodeModules,
-  crypto: require.resolve('react-native-quick-crypto'),
-  buffer: require.resolve('buffer'),
-}
+// Solana RN ecosystem package-exports tuning.
+//
+// @solana/web3.js (v1, pulled in by @coral-xyz/anchor) ships deep
+// imports into a couple of packages whose package.json exports maps
+// don't match RN by default:
+//
+//   - rpc-websockets — exports has node/browser conditions but no
+//     react-native one. Adding 'react-native' + 'browser' to the
+//     condition names makes Metro pick the browser entry.
+//   - @noble/hashes/crypto.js — sub-path not in the package's
+//     exports map at all. Metro's fall-back file-based resolution
+//     still finds the file at runtime, so it works; the warning is
+//     cosmetic and we leave it alone (the alternative — disabling
+//     package exports entirely — breaks react-native itself, which
+//     relies on its exports map for platform-specific entry points).
+config.resolver.unstable_conditionNames = [
+  'require',
+  'react-native',
+  'browser',
+  'default',
+]
 
 const uniwindConfig = withUniwindConfig(config, {
   cssEntryFile: './src/global.css',
