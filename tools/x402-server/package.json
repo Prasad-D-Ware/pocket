@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "fund": "tsx fund-test-wallet.ts",
+    "mint-to": "tsx mint-to-address.ts",
     "server": "tsx server.ts",
     "smoke": "tsx test-client.ts"
   },

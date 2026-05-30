@@ -43,8 +43,19 @@ export default function Home() {
           </Text>
         </Pressable>
       </Link>
-      <Text className="text-xs text-gray-500 dark:text-gray-400 mb-10">
+      <Text className="text-xs text-gray-500 dark:text-gray-400 mb-6">
         Airdrop + Keystore-signed SOL transfer
+      </Text>
+
+      <Link href="/x402-test" asChild>
+        <Pressable className="bg-purple-600 px-8 py-4 rounded-xl active:bg-purple-700 mb-2">
+          <Text className="text-white font-bold text-base">
+            x402 paid request
+          </Text>
+        </Pressable>
+      </Link>
+      <Text className="text-xs text-gray-500 dark:text-gray-400 mb-10">
+        Pay an endpoint in fake-USDC, signed by Keystore
       </Text>
 
       <View className="items-center">
