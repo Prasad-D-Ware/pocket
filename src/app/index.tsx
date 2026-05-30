@@ -1,13 +1,18 @@
 import { StatusBar } from 'expo-status-bar'
-import { Text, View, Pressable } from 'react-native'
+import { Text, View, Pressable, ScrollView } from 'react-native'
 import { Link } from 'expo-router'
 import { useMobileWallet } from '@wallet-ui/react-native-kit'
+import { usePendingCount } from '../inbox/hooks'
 
 export default function Home() {
   const { account, connect, disconnect } = useMobileWallet()
+  const { count: pending } = usePendingCount(2000)
 
   return (
-    <View className="flex-1 bg-white dark:bg-black items-center justify-center px-8">
+    <ScrollView
+      className="flex-1 bg-white dark:bg-black"
+      contentContainerClassName="items-center justify-center px-8 py-16"
+    >
       <Text className="text-4xl font-extrabold text-gray-900 dark:text-white mb-2 tracking-tight">
         Pocket
       </Text>
@@ -54,8 +59,26 @@ export default function Home() {
           </Text>
         </Pressable>
       </Link>
-      <Text className="text-xs text-gray-500 dark:text-gray-400 mb-10">
+      <Text className="text-xs text-gray-500 dark:text-gray-400 mb-6">
         Pay an endpoint in fake-USDC, signed by Keystore
+      </Text>
+
+      <Link href="/inbox" asChild>
+        <Pressable className="bg-amber-600 px-8 py-4 rounded-xl active:bg-amber-700 mb-2 flex-row items-center">
+          <Text className="text-white font-bold text-base">
+            Agent Inbox
+          </Text>
+          {pending > 0 && (
+            <View className="ml-2 bg-white/20 px-2 py-0.5 rounded-full">
+              <Text className="text-white font-bold text-xs">
+                {pending} pending
+              </Text>
+            </View>
+          )}
+        </Pressable>
+      </Link>
+      <Text className="text-xs text-gray-500 dark:text-gray-400 mb-10">
+        Queue + auto-route via PolicyGuard (sqlite)
       </Text>
 
       <View className="items-center">
@@ -86,6 +109,6 @@ export default function Home() {
       </View>
 
       <StatusBar style="auto" />
-    </View>
+    </ScrollView>
   )
 }

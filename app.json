@@ -11,6 +11,9 @@
     "android": {
       "package": "com.pocket.wallet"
     },
-    "plugins": ["expo-router"]
+    "plugins": [
+      "expo-router",
+      "expo-sqlite"
+    ]
   }
 }
