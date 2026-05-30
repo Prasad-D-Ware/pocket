@@ -7,6 +7,7 @@ import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.security.KeyPairGenerator
 import java.security.KeyStore
+import java.security.PrivateKey
 import java.security.Signature
 import java.security.spec.ECGenParameterSpec
 
@@ -68,12 +69,21 @@ class PocketKeystoreModule : Module() {
     AsyncFunction("sign") { alias: String, message: ByteArray ->
       requireApi33()
 
-      val entry =
-        keystore().getEntry(alias, null) as? KeyStore.PrivateKeyEntry
-          ?: throw IllegalStateException("No keystore entry for alias: $alias")
+      // Load the private key by alias instead of pulling the full
+      // PrivateKeyEntry. PrivateKeyEntry brings the auto-generated
+      // certificate chain along, and Signature.initSign() then sanity-
+      // checks that the private key's algorithm name matches the
+      // cert's public key algorithm name. When Ed25519 is routed
+      // through the EC generator, Android labels the private key
+      // "EC" and the cert's public key "EdDSA" — the check rejects
+      // the mismatch even though the bytes are perfectly compatible.
+      // Loading the PrivateKey directly bypasses that validation.
+      val privateKey =
+        keystore().getKey(alias, null) as? PrivateKey
+          ?: throw IllegalStateException("No keystore private key for alias: $alias")
 
       val sig = Signature.getInstance(SIGN_ALGORITHM)
-      sig.initSign(entry.privateKey)
+      sig.initSign(privateKey)
       sig.update(message)
       sig.sign()
     }
