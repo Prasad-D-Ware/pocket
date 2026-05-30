@@ -32,8 +32,19 @@ export default function Home() {
           </Text>
         </Pressable>
       </Link>
-      <Text className="text-xs text-gray-500 dark:text-gray-400 mb-10">
+      <Text className="text-xs text-gray-500 dark:text-gray-400 mb-6">
         Generate + sign + verify (Android 13+)
+      </Text>
+
+      <Link href="/send-test" asChild>
+        <Pressable className="bg-emerald-600 px-8 py-4 rounded-xl active:bg-emerald-700 mb-2">
+          <Text className="text-white font-bold text-base">
+            Send test (devnet)
+          </Text>
+        </Pressable>
+      </Link>
+      <Text className="text-xs text-gray-500 dark:text-gray-400 mb-10">
+        Airdrop + Keystore-signed SOL transfer
       </Text>
 
       <View className="items-center">
