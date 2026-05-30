@@ -8,10 +8,17 @@ import expo.modules.kotlin.modules.ModuleDefinition
 import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.security.Signature
-import java.security.spec.NamedParameterSpec
+import java.security.spec.ECGenParameterSpec
 
 private const val ANDROID_KEYSTORE = "AndroidKeyStore"
-private const val ED25519 = "Ed25519"
+
+// Algorithm names. Android Keystore's Ed25519 support routes through
+// its EC provider: KeyPairGenerator must be created with "EC" and
+// fed an ECGenParameterSpec("ed25519") (lowercase). The Signature side
+// accepts "Ed25519" directly.
+private const val KEYGEN_ALGORITHM = "EC"
+private const val ED25519_CURVE = "ed25519"
+private const val SIGN_ALGORITHM = "Ed25519"
 
 // Standard X.509 SubjectPublicKeyInfo for Ed25519 is 44 bytes:
 //   12-byte ASN.1 DER header (constant) + 32-byte raw public key.
@@ -37,14 +44,17 @@ class PocketKeystoreModule : Module() {
       val spec =
         KeyGenParameterSpec
           .Builder(alias, KeyProperties.PURPOSE_SIGN)
-          .setAlgorithmParameterSpec(NamedParameterSpec(ED25519))
+          .setAlgorithmParameterSpec(ECGenParameterSpec(ED25519_CURVE))
+          // Ed25519 uses its own internal hashing — DIGEST_NONE is
+          // both correct and required by the keystore EC generator
+          // for this curve.
           .setDigests(KeyProperties.DIGEST_NONE)
           // No biometric gate yet — Day 7 surface is just the signing
           // path. Day 8+ wires expo-local-authentication before sign().
           .setUserAuthenticationRequired(false)
           .build()
 
-      val gen = KeyPairGenerator.getInstance(ED25519, ANDROID_KEYSTORE)
+      val gen = KeyPairGenerator.getInstance(KEYGEN_ALGORITHM, ANDROID_KEYSTORE)
       gen.initialize(spec)
       gen.generateKeyPair()
 
@@ -62,7 +72,7 @@ class PocketKeystoreModule : Module() {
         keystore().getEntry(alias, null) as? KeyStore.PrivateKeyEntry
           ?: throw IllegalStateException("No keystore entry for alias: $alias")
 
-      val sig = Signature.getInstance(ED25519)
+      val sig = Signature.getInstance(SIGN_ALGORITHM)
       sig.initSign(entry.privateKey)
       sig.update(message)
       sig.sign()

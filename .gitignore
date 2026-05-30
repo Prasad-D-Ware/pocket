@@ -47,6 +47,12 @@ anchor/target/
 anchor/.anchor/
 anchor/test-ledger/
 
+# Local Expo module build outputs
+modules/**/android/build/
+modules/**/android/.gradle/
+modules/**/ios/build/
+modules/**/ios/Pods/
+
 # LLM model files (downloaded at first launch, not committed)
 *.gguf
 *.bin
