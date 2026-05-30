@@ -1,0 +1,23 @@
+{
+  "name": "pocket-x402-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local x402 demo server + Node smoke client for the Pocket Day 9 verification.",
+  "type": "module",
+  "scripts": {
+    "fund": "tsx fund-test-wallet.ts",
+    "server": "tsx server.ts",
+    "smoke": "tsx test-client.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.6",
+    "@solana/spl-token": "^0.4.14",
+    "@solana/web3.js": "^1.98.4",
+    "hono": "^4.10.4",
+    "tsx": "^4.22.3",
+    "x402-solana": "^2.0.4"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1"
+  }
+}

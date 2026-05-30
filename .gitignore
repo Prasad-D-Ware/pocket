@@ -53,6 +53,10 @@ modules/**/android/.gradle/
 modules/**/ios/build/
 modules/**/ios/Pods/
 
+# Tools workspaces — generated test keypairs etc
+tools/**/test-wallet.json
+tools/**/node_modules/
+
 # LLM model files (downloaded at first launch, not committed)
 *.gguf
 *.bin
