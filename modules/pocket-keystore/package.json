@@ -1,0 +1,7 @@
+{
+  "name": "pocket-keystore",
+  "version": "0.1.0",
+  "description": "Pocket — Android Keystore Ed25519 signing module (Expo local module).",
+  "main": "index.ts",
+  "private": true
+}

@@ -17,12 +17,23 @@ export default function Home() {
       </Text>
 
       <Link href="/vault" asChild>
-        <Pressable className="bg-blue-600 px-8 py-4 rounded-xl active:bg-blue-700 mb-3">
+        <Pressable className="bg-blue-600 px-8 py-4 rounded-xl active:bg-blue-700 mb-2">
           <Text className="text-white font-bold text-base">Open Vault</Text>
         </Pressable>
       </Link>
-      <Text className="text-xs text-gray-500 dark:text-gray-400 mb-10">
+      <Text className="text-xs text-gray-500 dark:text-gray-400 mb-6">
         Reads live state from devnet
+      </Text>
+
+      <Link href="/signer-test" asChild>
+        <Pressable className="bg-gray-900 dark:bg-gray-100 px-8 py-4 rounded-xl active:opacity-80 mb-2">
+          <Text className="text-white dark:text-gray-900 font-bold text-base">
+            Keystore signer test
+          </Text>
+        </Pressable>
+      </Link>
+      <Text className="text-xs text-gray-500 dark:text-gray-400 mb-10">
+        Generate + sign + verify (Android 13+)
       </Text>
 
       <View className="items-center">
