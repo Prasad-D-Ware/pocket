@@ -77,8 +77,19 @@ export default function Home() {
           )}
         </Pressable>
       </Link>
-      <Text className="text-xs text-gray-500 dark:text-gray-400 mb-10">
+      <Text className="text-xs text-gray-500 dark:text-gray-400 mb-6">
         Queue + auto-route via PolicyGuard (sqlite)
+      </Text>
+
+      <Link href="/policy-editor" asChild>
+        <Pressable className="bg-rose-600 px-8 py-4 rounded-xl active:bg-rose-700 mb-2">
+          <Text className="text-white font-bold text-base">
+            Policy Editor
+          </Text>
+        </Pressable>
+      </Link>
+      <Text className="text-xs text-gray-500 dark:text-gray-400 mb-10">
+        Open vault + push on-chain policy (Keystore-signed Anchor)
       </Text>
 
       <View className="items-center">

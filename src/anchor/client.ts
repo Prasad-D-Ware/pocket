@@ -1,8 +1,9 @@
-// Thin Anchor client over the on-chain pocket_vault program. Day 6
-// surface is read-only: PDA derivations + fetchVault + fetchPolicy.
-// Writes (set_policy, deposit, withdraw_under_policy) arrive on Day 8
-// once the device-bound signer (src/signer/) lands — until then there
-// is no key on the device to sign with.
+// Thin Anchor client over the on-chain pocket_vault program.
+//
+// Day 6  — read-only client (createReadOnlyClient + fetch helpers).
+// Day 13 — writable client (createWritableClient + openVault +
+//          setPolicy), backed by an Anchor Wallet adapter that wraps
+//          Pocket Keystore (see src/anchor/anchorWalletAdapter.ts).
 //
 // On RN this depends on the polyfill chain in polyfill.js (Buffer +
 // react-native-quick-crypto). Importing this file from a non-polyfilled
@@ -10,13 +11,13 @@
 
 import {
   AnchorProvider,
+  BN,
   Program,
-  Wallet,
   type IdlAccounts,
 } from '@coral-xyz/anchor'
+import type { AnchorWalletInterface } from './anchorWalletAdapter'
 import {
   Connection,
-  Keypair,
   PublicKey,
   Transaction,
   VersionedTransaction,
@@ -36,23 +37,19 @@ export type PolicyAccount = IdlAccounts<PocketVault>['policy']
  * call, so attempting to send a tx with the read-only client surfaces
  * loudly rather than silently no-op'ing.
  */
-class ReadOnlyWallet implements Wallet {
+class ReadOnlyWallet implements AnchorWalletInterface {
   publicKey = PublicKey.default
 
   async signTransaction<T extends Transaction | VersionedTransaction>(
     _tx: T,
   ): Promise<T> {
-    throw new Error('Pocket client is read-only on Day 6 — no signer wired yet')
+    throw new Error('Pocket client is read-only — use createWritableClient for writes')
   }
 
   async signAllTransactions<T extends Transaction | VersionedTransaction>(
     _txs: T[],
   ): Promise<T[]> {
-    throw new Error('Pocket client is read-only on Day 6 — no signer wired yet')
-  }
-
-  get payer(): Keypair {
-    throw new Error('Pocket client is read-only on Day 6 — no signer wired yet')
+    throw new Error('Pocket client is read-only — use createWritableClient for writes')
   }
 }
 
@@ -66,9 +63,13 @@ export function createReadOnlyClient(
   rpcUrl: string = DEVNET_RPC,
 ): PocketClient {
   const connection = new Connection(rpcUrl, 'confirmed')
-  const provider = new AnchorProvider(connection, new ReadOnlyWallet(), {
-    commitment: 'confirmed',
-  })
+  const provider = new AnchorProvider(
+    connection,
+    new ReadOnlyWallet() as unknown as ConstructorParameters<
+      typeof AnchorProvider
+    >[1],
+    { commitment: 'confirmed' },
+  )
   // Anchor 0.32 reads programId from idl.address — generated IDL is
   // already synced to jt6kDwFr...pXu.
   const program = new Program<PocketVault>(idl as PocketVault, provider)
@@ -188,4 +189,84 @@ function isAccountNotFound(e: unknown): boolean {
     m.includes('could not find account') ||
     m.includes('Invalid param')
   )
+}
+
+// ===== Day 13 — writable client + write ops =====
+//
+// All write paths route through the supplied Anchor Wallet, which on
+// RN is the Keystore-backed adapter (anchorWalletAdapter.ts). Same
+// preflight + retry belt we use everywhere on devnet to dodge
+// "Blockhash not found" flakes.
+
+const ANCHOR_RPC_OPTS = {
+  commitment: 'confirmed' as const,
+  preflightCommitment: 'confirmed' as const,
+  maxRetries: 5,
+  skipPreflight: false,
+}
+
+export function createWritableClient(
+  wallet: AnchorWalletInterface,
+  rpcUrl: string = DEVNET_RPC,
+): PocketClient {
+  const connection = new Connection(rpcUrl, 'confirmed')
+  // AnchorProvider's runtime type for `wallet` is the structural
+  // interface in provider.d.ts (payer is optional). Cast through
+  // unknown to bypass the public-export type which is NodeWallet.
+  const provider = new AnchorProvider(
+    connection,
+    wallet as unknown as ConstructorParameters<typeof AnchorProvider>[1],
+    ANCHOR_RPC_OPTS,
+  )
+  const program = new Program<PocketVault>(idl as PocketVault, provider)
+  return {
+    program,
+    connection,
+    programId: new PublicKey(POCKET_VAULT_PROGRAM_ID),
+  }
+}
+
+/**
+ * Opens a fresh vault PDA + vault ATA for the given authority/mint.
+ * Throws if the vault already exists. Returns the tx signature.
+ */
+export async function openVault(
+  client: PocketClient,
+  authority: PublicKey,
+  mint: PublicKey,
+): Promise<string> {
+  return client.program.methods
+    .openVault()
+    .accounts({ authority, mint })
+    .rpc(ANCHOR_RPC_OPTS)
+}
+
+/**
+ * Installs or updates the on-chain Policy for this vault. Anchor's
+ * init_if_needed makes the same call work for both first-time create
+ * and subsequent updates; the program resets daily_window_start_slot
+ * + spent_in_window on every call, so updating gives the user a
+ * fresh budget (intentional — see programs/pocket_vault/src/lib.rs).
+ */
+export async function setPolicy(
+  client: PocketClient,
+  authority: PublicKey,
+  args: {
+    maxPerTxBaseUnits: BN
+    maxPerDayBaseUnits: BN
+    /** 0 = never expires. */
+    expirySlot: BN
+    /** ~216,000 = 24h at 400 ms/slot. */
+    slotsPerWindow: BN
+  },
+): Promise<string> {
+  return client.program.methods
+    .setPolicy(
+      args.maxPerTxBaseUnits,
+      args.maxPerDayBaseUnits,
+      args.expirySlot,
+      args.slotsPerWindow,
+    )
+    .accounts({ authority })
+    .rpc(ANCHOR_RPC_OPTS)
 }
