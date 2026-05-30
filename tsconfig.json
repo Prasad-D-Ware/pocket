@@ -8,6 +8,7 @@
     "node_modules",
     "anchor",
     "tools",
-    "src/policy/__tests__"
+    "src/policy/__tests__",
+    "src/inbox/__tests__"
   ]
 }

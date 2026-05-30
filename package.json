@@ -13,8 +13,9 @@
     "lint": "expo lint --fix",
     "lint:check": "expo lint",
     "start": "expo start",
-    "test": "tsx --test src/policy/__tests__/*.test.ts",
-    "test:policy": "tsx --test src/policy/__tests__/*.test.ts",
+    "test": "tsx --test 'src/**/__tests__/*.test.ts'",
+    "test:policy": "tsx --test 'src/policy/__tests__/*.test.ts'",
+    "test:inbox": "tsx --test 'src/inbox/__tests__/*.test.ts'",
     "web": "expo start --web"
   },
   "displayName": "Pocket",
@@ -45,6 +46,7 @@
     "expo-dev-client": "^55.0.18",
     "expo-linking": "~55.0.8",
     "expo-router": "~55.0.7",
+    "expo-sqlite": "^56.0.4",
     "expo-status-bar": "~55.0.4",
     "react": "~19.2.0",
     "react-dom": "19.2.0",
@@ -59,7 +61,9 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/react": "~19.2.14",
+    "better-sqlite3": "^12.10.0",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~55.0.0",
     "prettier": "^3.8.1",
