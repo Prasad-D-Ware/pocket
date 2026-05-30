@@ -27,6 +27,9 @@ import { DEVNET_RPC } from '../anchor/constants'
 
 const LAMPORTS_PER_SOL = 1_000_000_000n
 const SELF_TRANSFER_LAMPORTS = 1_000n // 0.000001 SOL — minimal but non-zero
+// Devnet faucet caps individual requests; 0.5 SOL is reliably under
+// the per-call limit and gives us 5+ tx-fees of headroom.
+const AIRDROP_LAMPORTS = 500_000_000n // 0.5 SOL
 
 type State =
   | { kind: 'loading'; label: string }
@@ -86,7 +89,7 @@ export default function SendTestScreen() {
     try {
       const rpc = createSolanaRpc(DEVNET_RPC)
       const sig = await rpc
-        .requestAirdrop(state.signer.address, lamports(LAMPORTS_PER_SOL))
+        .requestAirdrop(state.signer.address, lamports(AIRDROP_LAMPORTS))
         .send()
       // Tiny grace period for the airdrop to land on the RPC node.
       await sleep(2000)
@@ -99,7 +102,11 @@ export default function SendTestScreen() {
         lastError: null,
       })
     } catch (e) {
-      setState({ ...state, busy: 'idle', lastError: errMsg(e) })
+      setState({
+        ...state,
+        busy: 'idle',
+        lastError: friendlyAirdropError(e),
+      })
     }
   }
 
@@ -148,7 +155,6 @@ export default function SendTestScreen() {
       {state.kind === 'ready' && (
         <View>
           <Section title="Signer">
-            <Pair k="address" v={short(state.signer.address)} mono />
             <Pair
               k="balance"
               v={
@@ -157,6 +163,15 @@ export default function SendTestScreen() {
                   : fmtSol(state.balanceLamports)
               }
             />
+            <Text className="text-gray-600 dark:text-gray-400 text-xs mt-2 mb-1">
+              address (long-press to copy)
+            </Text>
+            <Text
+              selectable
+              className="text-gray-900 dark:text-white text-xs font-mono"
+            >
+              {state.signer.address}
+            </Text>
           </Section>
 
           <Pressable
@@ -171,7 +186,7 @@ export default function SendTestScreen() {
             <Text className="text-white font-bold text-center">
               {state.busy === 'airdropping'
                 ? 'requesting airdrop…'
-                : '1) Airdrop 1 SOL (devnet)'}
+                : '1) Airdrop 0.5 SOL (devnet)'}
             </Text>
           </Pressable>
 
@@ -212,6 +227,38 @@ export default function SendTestScreen() {
           </Pressable>
 
           {state.lastError && <ErrorPanel message={state.lastError} />}
+
+          {(state.lastError || (state.balanceLamports ?? 0n) === 0n) && (
+            <View className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 mb-4">
+              <Text className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2 font-semibold">
+                If devnet faucet is rate-limited
+              </Text>
+              <Text className="text-gray-700 dark:text-gray-300 text-xs mb-2">
+                Fund this address manually with any of:
+              </Text>
+              <Text className="text-gray-700 dark:text-gray-300 text-xs mb-1">
+                • Web faucet:{' '}
+                <Text
+                  className="underline text-blue-700 dark:text-blue-300"
+                  onPress={() => Linking.openURL('https://faucet.solana.com')}
+                >
+                  faucet.solana.com
+                </Text>{' '}
+                (paste address, select devnet)
+              </Text>
+              <Text className="text-gray-700 dark:text-gray-300 text-xs mb-1">
+                • CLI:{' '}
+                <Text className="font-mono">
+                  solana transfer{' '}
+                  {state.signer.address.slice(0, 6)}…{' '}
+                  0.1 --allow-unfunded-recipient -u devnet
+                </Text>
+              </Text>
+              <Text className="text-gray-700 dark:text-gray-300 text-xs">
+                Then tap Refresh balance.
+              </Text>
+            </View>
+          )}
 
           {state.airdropSig && (
             <ResultPanel
@@ -416,4 +463,22 @@ function sleep(ms: number): Promise<void> {
 function errMsg(e: unknown): string {
   if (e instanceof Error) return e.message
   return String(e)
+}
+
+// Devnet airdrop failures usually come back as "Internal JSON-RPC
+// error" with no detail. In practice that means one of:
+//   - per-IP daily faucet cap reached
+//   - per-call lamport limit exceeded
+//   - faucet temporarily down
+// Surface a useful next step instead of the raw RPC noise.
+function friendlyAirdropError(e: unknown): string {
+  const raw = errMsg(e)
+  if (/Internal/.test(raw) || /rate.?limit/i.test(raw)) {
+    return (
+      'Devnet faucet rejected the request (likely rate-limited). ' +
+      'Try again in a minute, or fund the address manually from ' +
+      'faucet.solana.com or your CLI wallet — see the fallback below.'
+    )
+  }
+  return raw
 }
