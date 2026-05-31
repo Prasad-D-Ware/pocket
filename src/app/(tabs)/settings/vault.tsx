@@ -134,7 +134,7 @@ export default function VaultScreen() {
         <View>
           <Section
             title={
-              source === 'mine' ? 'Authority (Keystore)' : 'Authority (Day 6 hardcoded)'
+              source === 'mine' ? 'Authority (Keystore)' : 'Authority (test wallet)'
             }
           >
             <Card padding="md">

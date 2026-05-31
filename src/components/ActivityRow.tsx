@@ -5,10 +5,10 @@ import { summarizeIntent } from '../inbox/format'
 import type { InboxRow } from '../inbox/types'
 
 const STATUS_META = {
-  pending: { icon: 'clock', tone: 'text-amber-400' },
-  signed: { icon: 'check', tone: 'text-emerald-400' },
-  denied: { icon: 'x', tone: 'text-red-400' },
-  failed: { icon: 'alert-triangle', tone: 'text-red-400' },
+  pending: { icon: 'clock', color: '#FBBF24' },
+  signed: { icon: 'check', color: '#34D399' },
+  denied: { icon: 'x', color: '#F87171' },
+  failed: { icon: 'alert-triangle', color: '#F87171' },
 } as const
 
 export function ActivityRow({ row }: { row: InboxRow }) {
@@ -23,7 +23,7 @@ export function ActivityRow({ row }: { row: InboxRow }) {
   return (
     <View className="py-3 border-b border-white/[0.04] last:border-0">
       <View className="flex-row items-start gap-3">
-        <Feather name={meta.icon as never} size={16} className={meta.tone} color={undefined} />
+        <Feather name={meta.icon as never} size={16} color={meta.color} style={{ marginTop: 2 }} />
         <View className="flex-1">
           <Text className="text-white text-sm">
             {summary ?? '(unparseable intent)'}

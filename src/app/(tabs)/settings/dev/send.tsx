@@ -256,7 +256,7 @@ export default function SendTestScreen() {
               title="✓ Transfer signed by Keystore + confirmed on devnet"
               sig={state.sendSig}
               tone="success"
-              footer="The Keystore key produced a real Ed25519 signature that the Solana validator accepted. This is the full Day 8 path: Pocket → Kit signer → keystore.sign → Solana RPC."
+              footer="The Keystore key produced a real Ed25519 signature that the Solana validator accepted. Full path: Pocket → Kit signer → keystore.sign → Solana RPC."
             />
           )}
         </View>

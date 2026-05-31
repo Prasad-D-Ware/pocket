@@ -12,6 +12,8 @@ const DEV_SCREENS = [
   { href: '/settings/dev/x402', title: 'x402 paid request', subtitle: 'Pay an endpoint with Keystore-signed Solana' },
   { href: '/settings/dev/llm', title: 'LLM test', subtitle: 'SmolLM2-360M raw inference' },
   { href: '/settings/dev/parser', title: 'Intent parser benchmark', subtitle: '20-prompt grammar benchmark' },
+  { href: '/settings/dev/simulators', title: 'Canned inbox simulators', subtitle: '5 scripted agent intents' },
+  { href: '/settings/dev/anchor', title: 'Anchor program info', subtitle: 'Program ID + IDL + explorer' },
 ]
 
 export default function DevIndex() {
