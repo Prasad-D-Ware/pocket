@@ -27,12 +27,16 @@ src/ui/
 ├── Button.tsx            # primary | secondary | ghost | destructive
 ├── TextField.tsx         # Styled TextInput w/ label + helper + error
 ├── Address.tsx           # Abbreviated address + copy
-├── TxStatus.tsx          # Status pill: signed | pending | denied | failed
 ├── EmptyState.tsx        # Centered icon + title + body + CTA
 ├── Skeleton.tsx          # Animated shimmer block
 ├── Pill.tsx              # Small rounded label with tone
 ├── Stat.tsx              # Big number + small label
 └── ListItem.tsx          # Padded row with left/center/right slots
+
+src/inbox/
+└── TxStatus.tsx          # Status pill: signed | pending | denied | failed
+                          # (co-located with InboxStatus type — feature-owned,
+                          # not a generic UI primitive)
 
 src/app/(tabs)/
 ├── _layout.tsx           # Tabs component with 4 tabs
@@ -525,7 +529,7 @@ function short(s: string): string {
 
 **Files:**
 - Create: `src/ui/Pill.tsx`
-- Create: `src/ui/TxStatus.tsx`
+- Create: `src/inbox/TxStatus.tsx`
 
 - [ ] **Step 1: Write Pill.tsx**
 
@@ -560,8 +564,8 @@ export function Pill({ tone = 'neutral', children }: PillProps) {
 - [ ] **Step 2: Write TxStatus.tsx**
 
 ```tsx
-import { Pill, type PillTone } from './Pill'
-import type { InboxStatus } from '../inbox/types'
+import { Pill, type PillTone } from '../ui/Pill'
+import type { InboxStatus } from './types'
 
 const TONE: Record<InboxStatus, PillTone> = {
   pending: 'warn',
@@ -786,8 +790,8 @@ This is the riskiest task because expo-router watches the file tree. Do it in on
   - `src/app/parser-test.tsx` → `src/app/(tabs)/settings/dev/parser.tsx`
   - `src/app/vault.tsx` → `src/app/(tabs)/settings/vault.tsx`
   - `src/app/policy-editor.tsx` → `src/app/(tabs)/settings/policy.tsx`
-  - Keep `src/app/inbox.tsx` in place for now — it gets split in Phase 2 / 3.
-  - Keep `src/app/index.tsx` in place — replaced in Phase 2.
+  - **Delete `src/app/inbox.tsx` in Task 1.16** (collides with `(tabs)/inbox.tsx` — expo-router throws a duplicate-route error). The "Talk to Pocket" + canned simulator content is rebuilt fresh from plan code in Phases 2/4 — no need to keep the legacy file as a reference.
+  - **Delete `src/app/index.tsx` in Task 1.16** (same collision reason with `(tabs)/index.tsx`).
 
 - [ ] **Step 1: Make the directories**
 
@@ -813,7 +817,18 @@ git mv src/app/policy-editor.tsx src/app/'(tabs)'/settings/policy.tsx
 
 Each moved file imports `../anchor/...`, `../signer/...`, `../inbox/...` etc. The new depth is `../../../`. Update each file's imports:
 
-Replace pattern in each moved file (search-and-replace):
+Replace pattern in each moved file (search-and-replace).
+
+**Files at `src/app/(tabs)/settings/dev/*.tsx` (4 levels deep from `src/`):**
+- `from '../anchor/` → `from '../../../../anchor/`
+- `from '../signer/` → `from '../../../../signer/`
+- `from '../inbox/` → `from '../../../../inbox/`
+- `from '../x402/` → `from '../../../../x402/`
+- `from '../llm/` → `from '../../../../llm/`
+- `from '../policy/` → `from '../../../../policy/`
+- `from '../../modules/` → `from '../../../../../modules/`
+
+**Files at `src/app/(tabs)/settings/*.tsx` (vault, policy — 3 levels deep from `src/`):**
 - `from '../anchor/` → `from '../../../anchor/`
 - `from '../signer/` → `from '../../../signer/`
 - `from '../inbox/` → `from '../../../inbox/`
@@ -822,7 +837,7 @@ Replace pattern in each moved file (search-and-replace):
 - `from '../policy/` → `from '../../../policy/`
 - `from '../../modules/` → `from '../../../../modules/`
 
-(For `vault.tsx` and `policy.tsx` which are one level shallower than `dev/`, the prefix is `../../` instead of `../../../`.)
+**Errata:** earlier revisions of this plan had these depths off by one — `src/app/(tabs)/settings/X.tsx` is THREE levels above `src/`, not two; `src/app/(tabs)/settings/dev/X.tsx` is FOUR, not three. The tsc check below is the actual oracle.
 
 Use this command to scan for any leftover wrong-depth imports:
 ```bash
@@ -1098,18 +1113,22 @@ export default function DevIndex() {
 }
 ```
 
-### Task 1.16: Delete old root home + keep legacy /inbox for now
+### Task 1.16: Delete legacy root screens
 
 **Files:**
 - Delete: `src/app/index.tsx` (replaced by `(tabs)/index.tsx`)
-- Modify: `src/app/inbox.tsx` — leave in place; Phase 2 + 3 split it.
+- Delete: `src/app/inbox.tsx` (replaced by `(tabs)/inbox.tsx`)
 
-Wait — Expo Router routes both `src/app/index.tsx` AND `src/app/(tabs)/index.tsx` to `/`. Having both throws a duplicate-route error at bundle time. Must delete the old one.
+Expo Router routes BOTH legacy files AND their `(tabs)/`-namespaced versions to the same URLs (`(tabs)` is a group syntax, no URL segment), causing duplicate-route errors at bundle time. Both legacy files must go.
 
-- [ ] **Step 1: Delete old home**
+The "Talk to Pocket" + canned simulator content from the old `inbox.tsx` is rebuilt fresh in Phases 2 + 4 from the full inline code in those tasks — no need to keep the legacy file as reference. (This also makes Phase 4's Task 4.6 a no-op — it's left in the plan as a verification step.)
+
+- [ ] **Step 1: Delete both legacy screens**
 
 ```bash
-cd pocket && git rm src/app/index.tsx
+cd pocket
+git rm src/app/index.tsx
+git rm src/app/inbox.tsx
 ```
 
 - [ ] **Step 2: Typecheck**
@@ -1118,7 +1137,7 @@ cd pocket && git rm src/app/index.tsx
 cd pocket && npx tsc --noEmit -p tsconfig.json
 ```
 
-Expected: exit 0. (`src/app/inbox.tsx` still imports legacy paths like `../inbox/...` — these still resolve since it didn't move.)
+Expected: exit 0.
 
 ### Task 1.17: Phase 1 acceptance + commit
 
@@ -2392,19 +2411,19 @@ export default function AnchorInfo() {
 }
 ```
 
-### Task 4.6: Delete legacy inbox file
+### Task 4.6: Verify legacy inbox file is gone
 
-**Files:**
-- Delete: `src/app/inbox.tsx`
+(`src/app/inbox.tsx` was already deleted in Phase 1 Task 1.16 to resolve a duplicate-route error with `(tabs)/inbox.tsx`. This task is now a no-op verification.)
 
-- [ ] **Step 1: Delete + verify**
+- [ ] **Step 1: Verify deletion + typecheck**
 
 ```bash
-cd pocket && git rm src/app/inbox.tsx
+cd pocket
+test ! -e src/app/inbox.tsx && echo "OK — legacy file already gone"
 npx tsc --noEmit -p tsconfig.json
 ```
 
-Expected: exit 0.
+Expected: "OK — legacy file already gone" + exit 0.
 
 ### Task 4.7: Phase 4 acceptance + commit
 

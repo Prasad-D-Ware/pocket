@@ -9,15 +9,15 @@ import {
 } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 
-import { MODEL_FILENAME, MODEL_SIZE_MB, MODEL_URL } from '../llm/constants'
+import { MODEL_FILENAME, MODEL_SIZE_MB, MODEL_URL } from '../../../../llm/constants'
 import {
   deleteModelFile,
   ensureModelLoaded,
   getModelStatus,
   releaseModel,
   type ModelStatus,
-} from '../llm/model'
-import { startDownload, type DownloadHandle, type DownloadProgress } from '../llm/download'
+} from '../../../../llm/model'
+import { startDownload, type DownloadHandle, type DownloadProgress } from '../../../../llm/download'
 
 type Screen =
   | { kind: 'probing' }

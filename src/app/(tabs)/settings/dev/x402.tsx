@@ -12,12 +12,12 @@ import { StatusBar } from 'expo-status-bar'
 import { Connection, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js'
 import { getAssociatedTokenAddressSync } from '@solana/spl-token'
 
-import { DEVNET_RPC } from '../anchor/constants'
-import { createPocketPayClient } from '../x402/payClient'
+import { DEVNET_RPC } from '../../../../anchor/constants'
+import { createPocketPayClient } from '../../../../x402/payClient'
 import {
   createKeystoreWalletAdapter,
   type KeystoreWalletAdapter,
-} from '../x402/keystoreWalletAdapter'
+} from '../../../../x402/keystoreWalletAdapter'
 
 // Same mint the Day 9 server expects. Treasury also matches —
 // see tools/x402-server/constants.ts.

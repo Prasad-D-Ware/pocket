@@ -17,7 +17,7 @@ import {
   POCKET_SIGNER_ALIAS,
   sign,
   type PocketKey,
-} from '../signer/keystore'
+} from '../../../../signer/keystore'
 
 type Status =
   | { kind: 'idle'; available: boolean; hasExistingKey: boolean }

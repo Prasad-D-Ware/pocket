@@ -9,9 +9,9 @@ import {
 } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 
-import { ensureModelLoaded, getModelStatus } from '../llm/model'
-import { parseIntent, type ParseOutcome } from '../llm/parser'
-import { BENCHMARK_PROMPTS } from '../llm/__benchmarks__/prompts'
+import { ensureModelLoaded, getModelStatus } from '../../../../llm/model'
+import { parseIntent, type ParseOutcome } from '../../../../llm/parser'
+import { BENCHMARK_PROMPTS } from '../../../../llm/__benchmarks__/prompts'
 
 type LoadState =
   | { kind: 'probing' }

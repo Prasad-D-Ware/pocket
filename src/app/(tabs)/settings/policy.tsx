@@ -12,7 +12,7 @@ import { StatusBar } from 'expo-status-bar'
 import { BN } from '@coral-xyz/anchor'
 import { Connection, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js'
 
-import { DEVNET_RPC } from '../anchor/constants'
+import { DEVNET_RPC } from '../../../anchor/constants'
 import {
   createReadOnlyClient,
   createWritableClient,
@@ -24,11 +24,11 @@ import {
   setPolicy,
   type PolicyAccount,
   type VaultAccount,
-} from '../anchor/client'
+} from '../../../anchor/client'
 import {
   createAnchorWalletAdapter,
   type AnchorWalletAdapter,
-} from '../anchor/anchorWalletAdapter'
+} from '../../../anchor/anchorWalletAdapter'
 
 const FAKE_USDC_MINT = 'BofnM1aZaTJfxpoDD82oDJQEcSEyKtHjEEEUujCmE29v'
 const USDC_DECIMALS = 6

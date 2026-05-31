@@ -11,8 +11,8 @@ import {
   fetchVaultAtaBalance,
   type PolicyAccount,
   type VaultAccount,
-} from '../anchor/client'
-import { DAY_6_TEST_AUTHORITY, POCKET_VAULT_PROGRAM_ID } from '../anchor/constants'
+} from '../../../anchor/client'
+import { DAY_6_TEST_AUTHORITY, POCKET_VAULT_PROGRAM_ID } from '../../../anchor/constants'
 
 const USDC_DECIMALS = 6
 

@@ -22,8 +22,8 @@ import {
 } from '@solana/kit'
 import { getTransferSolInstruction } from '@solana-program/system'
 
-import { createPocketKitSigner, type PocketSigner } from '../signer/pocketSigner'
-import { DEVNET_RPC } from '../anchor/constants'
+import { createPocketKitSigner, type PocketSigner } from '../../../../signer/pocketSigner'
+import { DEVNET_RPC } from '../../../../anchor/constants'
 
 const LAMPORTS_PER_SOL = 1_000_000_000n
 const SELF_TRANSFER_LAMPORTS = 1_000n // 0.000001 SOL — minimal but non-zero
