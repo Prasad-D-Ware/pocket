@@ -31,7 +31,7 @@ export default function Pay() {
   const [routing, setRouting] = useState(false)
   const [result, setResult] = useState<RouteResult | null>(null)
   const trigger = useHaptic()
-  const { rows } = useInbox({ status: 'signed', limit: 5, pollMs: 2000 })
+  const { rows, refresh } = useInbox({ status: 'signed', limit: 5, pollMs: 2000 })
 
   const paymentRows = rows.filter((r) => {
     const sig = r.signed_tx ?? ''
@@ -58,6 +58,7 @@ export default function Pay() {
         runner: openInbox(),
         policy: defaultPolicy(),
         demoX402Url: demoUrl.trim() || DEFAULT_X402_DEMO_URL,
+        onMutate: refresh,
       })
       setResult(r)
       trigger(r.kind === 'signed-real' ? 'success' : 'tap')

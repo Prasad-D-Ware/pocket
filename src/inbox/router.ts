@@ -36,6 +36,10 @@ export type RouterDeps = {
    *  a local-server demo where the model says "api.helius.dev" but
    *  we hit http://10.0.2.2:4242/api/quote. */
   demoX402Url: string
+  /** Called immediately after any markSigned/markDenied/markFailed
+   *  transition so the caller's useInbox hook re-reads instead of
+   *  waiting for the next 2 s poll. */
+  onMutate?: () => void
 }
 
 export type RouteStage = 'parse' | 'expand' | 'enqueue' | 'execute'
@@ -123,6 +127,7 @@ export async function routeSentence(
   // 4. Branch on the policy decision.
   if (policyResult.action === 'deny') {
     queue.markDenied(deps.runner, inboxId, policyResult.reason)
+    deps.onMutate?.()
     return { kind: 'denied', inboxId, intent, policyResult }
   }
 
@@ -144,15 +149,18 @@ export async function routeSentence(
       if (res.status !== 200) {
         const reason = `server returned ${res.status}`
         queue.markFailed(deps.runner, inboxId, reason)
+        deps.onMutate?.()
         return { kind: 'execute-failed', inboxId, intent, reason }
       }
       const body = await res.json().catch(() => ({}))
       const sig = extractPaymentSig(body) ?? `EXECUTED_${shortRandom()}`
       queue.markSigned(deps.runner, inboxId, sig)
+      deps.onMutate?.()
       return { kind: 'signed-real', inboxId, intent, sig, body }
     } catch (e) {
       const reason = errMsg(e)
       queue.markFailed(deps.runner, inboxId, reason)
+      deps.onMutate?.()
       return { kind: 'execute-failed', inboxId, intent, reason }
     }
   }
@@ -163,6 +171,7 @@ export async function routeSentence(
   // inbox still reflects the policy decision honestly.
   const sig = `SIMULATED_${shortRandom()}`
   queue.markSigned(deps.runner, inboxId, sig)
+  deps.onMutate?.()
   return {
     kind: 'signed-simulated',
     inboxId,
