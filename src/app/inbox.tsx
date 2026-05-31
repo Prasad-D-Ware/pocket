@@ -4,6 +4,7 @@ import {
   Pressable,
   ScrollView,
   Text,
+  TextInput,
   View,
 } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
@@ -13,23 +14,30 @@ import { useInbox } from '../inbox/hooks'
 import {
   decodeIntent,
   decodePolicyResult,
-  list as listRows,
   markDenied,
   markSigned,
-  pendingCount as pendingCountFn,
 } from '../inbox/queue'
 import {
   SCENARIOS,
   defaultPolicy,
   evaluateAndEnqueue,
 } from '../inbox/simulator'
+import { routeSentence, type RouteResult } from '../inbox/router'
 import type { InboxRow, InboxStatus } from '../inbox/types'
 import { summarizeIntent } from '../inbox/format'
+import { getModelStatus } from '../llm/model'
+
+const DEFAULT_X402_DEMO_URL = 'http://10.0.2.2:4242/api/quote'
 
 export default function InboxScreen() {
   const { rows, loading, refresh } = useInbox({ limit: 100, pollMs: 2000 })
   const [busy, setBusy] = useState<string | null>(null)
   const [lastDecision, setLastDecision] = useState<string | null>(null)
+  // "Talk to Pocket" state.
+  const [sentence, setSentence] = useState('pay api.helius.dev 0.5 USDC for a query')
+  const [x402Url, setX402Url] = useState(DEFAULT_X402_DEMO_URL)
+  const [routing, setRouting] = useState(false)
+  const [routeResult, setRouteResult] = useState<RouteResult | null>(null)
 
   const pending = useMemo(
     () => rows.filter((r) => r.status === 'pending'),
@@ -57,6 +65,43 @@ export default function InboxScreen() {
       setLastDecision(`error: ${errMsg(e)}`)
     } finally {
       setBusy(null)
+    }
+  }
+
+  async function onRouteSentence() {
+    if (routing) return
+    if (!sentence.trim()) return
+    // Model has to be downloaded — the LLM Test screen does this.
+    const status = await getModelStatus()
+    if (status.state !== 'ready') {
+      setRouteResult({
+        kind: 'parse-failed',
+        reason: 'model not downloaded',
+        raw: 'Open LLM Test from home, download SmolLM2 (~271 MB), then come back.',
+        durationMs: 0,
+      })
+      return
+    }
+    setRouting(true)
+    setRouteResult(null)
+    try {
+      const runner = openInbox()
+      const result = await routeSentence(sentence.trim(), {
+        runner,
+        policy: defaultPolicy(),
+        demoX402Url: x402Url.trim() || DEFAULT_X402_DEMO_URL,
+      })
+      setRouteResult(result)
+      refresh()
+    } catch (e) {
+      setRouteResult({
+        kind: 'parse-failed',
+        reason: 'unhandled',
+        raw: errMsg(e),
+        durationMs: 0,
+      })
+    } finally {
+      setRouting(false)
     }
   }
 
@@ -137,13 +182,55 @@ export default function InboxScreen() {
         </>
       )}
 
-      <SectionLabel title="Simulate agent request" />
+      <SectionLabel title="Talk to Pocket" />
       <Text className="text-gray-500 dark:text-gray-400 text-xs mb-3 leading-relaxed">
-        Each button enqueues a canned Intent + runs PolicyGuard
-        against the default policy. Allowed requests auto-sign with a
-        SIMULATED sig (real Keystore signing through the inbox lands
-        Day 13); denied requests appear in Recent activity; mid-range
-        requests stay pending until you approve.
+        Type a payment in English. The on-device LLM parses it, PolicyGuard
+        decides, and an allowed x402 payment hits the demo URL below with a
+        real Keystore-signed Solana payment.
+      </Text>
+      <View className="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 mb-4">
+        <Text className="text-gray-600 dark:text-gray-400 text-xs mb-1">
+          sentence
+        </Text>
+        <TextInput
+          value={sentence}
+          onChangeText={setSentence}
+          multiline
+          autoCapitalize="sentences"
+          placeholder="pay api.helius.dev 0.5 USDC"
+          placeholderTextColor="#9CA3AF"
+          className="text-sm text-gray-900 dark:text-white py-2 min-h-[50px]"
+        />
+        <Text className="text-gray-600 dark:text-gray-400 text-xs mt-2 mb-1">
+          x402 demo URL
+        </Text>
+        <TextInput
+          value={x402Url}
+          onChangeText={setX402Url}
+          autoCapitalize="none"
+          autoCorrect={false}
+          className="text-xs text-gray-900 dark:text-white font-mono py-2"
+        />
+      </View>
+      <Pressable
+        onPress={() => void onRouteSentence()}
+        disabled={routing}
+        className={`px-6 py-4 rounded-xl mb-3 ${
+          routing
+            ? 'bg-gray-300 dark:bg-gray-800'
+            : 'bg-violet-600 active:bg-violet-700'
+        }`}
+      >
+        <Text className="text-white font-bold text-center">
+          {routing ? 'parsing + routing…' : 'Send'}
+        </Text>
+      </Pressable>
+      {routeResult && <RouteResultPanel result={routeResult} />}
+
+      <SectionLabel title="Simulate agent request (canned scenarios)" />
+      <Text className="text-gray-500 dark:text-gray-400 text-xs mb-3 leading-relaxed">
+        Pre-baked Intents that bypass the LLM. Useful for testing
+        PolicyGuard's allow / queue / deny branches deterministically.
       </Text>
       {SCENARIOS.map((s) => (
         <Pressable
@@ -180,6 +267,86 @@ function countByStatus(rows: InboxRow[]): Counts {
   const c: Counts = { pending: 0, signed: 0, denied: 0, failed: 0 }
   for (const r of rows) c[r.status] = (c[r.status] ?? 0) + 1
   return c
+}
+
+function RouteResultPanel({ result }: { result: RouteResult }) {
+  const tone =
+    result.kind === 'signed-real'
+      ? 'green'
+      : result.kind === 'signed-simulated' || result.kind === 'queued'
+        ? 'blue'
+        : result.kind === 'denied' || result.kind === 'refused'
+          ? 'amber'
+          : 'red'
+  const bg = {
+    green:
+      'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-900',
+    blue:
+      'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-900',
+    amber:
+      'bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-900',
+    red: 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-900',
+  }[tone]
+  const fg = {
+    green: 'text-green-800 dark:text-green-200',
+    blue: 'text-blue-800 dark:text-blue-200',
+    amber: 'text-amber-800 dark:text-amber-200',
+    red: 'text-red-800 dark:text-red-200',
+  }[tone]
+  return (
+    <View className={`border rounded-xl p-4 mb-6 ${bg}`}>
+      <Text className={`font-bold text-sm mb-1 ${fg}`}>
+        {labelFor(result)}
+      </Text>
+      <Text className={`text-xs ${fg}`}>{detailFor(result)}</Text>
+    </View>
+  )
+}
+
+function labelFor(r: RouteResult): string {
+  switch (r.kind) {
+    case 'signed-real':
+      return '✓ Signed + executed on-chain'
+    case 'signed-simulated':
+      return '✓ Signed (SIMULATED — execution pending Day 17+)'
+    case 'queued':
+      return '⋯ Queued for manual review'
+    case 'denied':
+      return '✗ Denied by policy'
+    case 'refused':
+      return '✗ Refused by parser'
+    case 'parse-failed':
+      return '✗ Parse failed'
+    case 'expand-failed':
+      return '✗ Expand failed'
+    case 'execute-failed':
+      return '✗ Execution failed'
+  }
+}
+
+function detailFor(r: RouteResult): string {
+  switch (r.kind) {
+    case 'signed-real':
+      return `tx: ${r.sig.slice(0, 12)}…${r.sig.slice(-6)}`
+    case 'signed-simulated':
+      return `${r.reason}\nsig: ${r.sig}`
+    case 'queued':
+      return r.policyResult.action === 'queue' && r.policyResult.reason
+        ? r.policyResult.reason
+        : 'awaiting your tap in Pending above'
+    case 'denied':
+      return r.policyResult.action === 'deny'
+        ? `${r.policyResult.denied_by}: ${r.policyResult.reason}`
+        : 'denied'
+    case 'refused':
+      return `${r.reason} (${r.durationMs}ms)`
+    case 'parse-failed':
+      return `${r.reason}: ${r.raw}`
+    case 'expand-failed':
+      return r.reason
+    case 'execute-failed':
+      return r.reason
+  }
 }
 
 function SectionLabel({ title }: { title: string }) {
