@@ -1,16 +1,15 @@
 import { useEffect, useState } from 'react'
-import {
-  ActivityIndicator,
-  Linking,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native'
-import { StatusBar } from 'expo-status-bar'
+import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native'
 import { BN } from '@coral-xyz/anchor'
 import { Connection, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js'
+
+import { Screen } from '../../../ui/Screen'
+import { Header } from '../../../ui/Header'
+import { Card } from '../../../ui/Card'
+import { Button } from '../../../ui/Button'
+import { TextField } from '../../../ui/TextField'
+import { Address } from '../../../ui/Address'
+import { useHaptic } from '../../../ui/useHaptic'
 
 import { DEVNET_RPC } from '../../../anchor/constants'
 import {
@@ -59,6 +58,7 @@ type Action = {
 }
 
 export default function PolicyEditorScreen() {
+  const trigger = useHaptic()
   const [load, setLoad] = useState<LoadState>({
     kind: 'loading',
     label: 'loading Keystore + vault state…',
@@ -128,6 +128,7 @@ export default function PolicyEditorScreen() {
 
   async function onOpenVault() {
     if (load.kind !== 'ready' || action.busy !== 'idle') return
+    trigger('tap')
     setAction({ busy: 'opening', lastSig: null, lastError: null })
     try {
       const client = createWritableClient(load.adapter, DEVNET_RPC)
@@ -136,17 +137,21 @@ export default function PolicyEditorScreen() {
         load.adapter.publicKey,
         new PublicKey(FAKE_USDC_MINT),
       )
+      trigger('success')
       setAction({ busy: 'idle', lastSig: sig, lastError: null })
       await refresh()
     } catch (e) {
+      trigger('error')
       setAction({ busy: 'idle', lastSig: null, lastError: errMsg(e) })
     }
   }
 
   async function onSetPolicy() {
     if (load.kind !== 'ready' || action.busy !== 'idle') return
+    trigger('tap')
     const parsed = parseForm(form)
     if (!parsed.ok) {
+      trigger('error')
       setAction({ ...action, lastError: parsed.error })
       return
     }
@@ -154,209 +159,214 @@ export default function PolicyEditorScreen() {
     try {
       const client = createWritableClient(load.adapter, DEVNET_RPC)
       const sig = await setPolicy(client, load.adapter.publicKey, parsed.args)
+      trigger('success')
       setAction({ busy: 'idle', lastSig: sig, lastError: null })
       await refresh()
     } catch (e) {
+      trigger('error')
       setAction({ busy: 'idle', lastSig: null, lastError: errMsg(e) })
     }
   }
 
   return (
-    <ScrollView
-      className="flex-1 bg-white dark:bg-black"
-      contentContainerClassName="px-6 pt-16 pb-12"
-    >
-      <Text className="text-3xl font-extrabold text-gray-900 dark:text-white mb-1">
-        Policy Editor
-      </Text>
-      <Text className="text-sm text-gray-500 dark:text-gray-400 mb-8">
-        devnet · pocket_vault · signed by Keystore
-      </Text>
+    <Screen>
+      <Header
+        title="Policy editor"
+        subtitle="devnet · pocket_vault · signed by Keystore"
+      />
 
       {load.kind === 'loading' && (
         <View className="items-center mt-8">
-          <ActivityIndicator />
-          <Text className="text-gray-500 dark:text-gray-400 mt-3">
-            {load.label}
-          </Text>
+          <ActivityIndicator color="#A78BFA" />
+          <Text className="text-gray-400 mt-3 text-sm">{load.label}</Text>
         </View>
       )}
 
       {load.kind === 'error' && (
-        <ErrorPanel title="Failed to load" message={load.message} />
+        <ErrorCard title="Failed to load" message={load.message} />
       )}
 
       {load.kind === 'ready' && (
         <>
           <Section title="Authority">
-            <Pair
-              k="SOL"
-              v={load.sol === null ? '—' : load.sol.toString()}
-            />
-            <Text className="text-gray-600 dark:text-gray-400 text-xs mt-2 mb-1">
-              address (long-press to copy)
-            </Text>
-            <Text
-              selectable
-              className="text-gray-900 dark:text-white text-xs font-mono"
-            >
-              {load.adapter.address}
-            </Text>
+            <Card padding="md">
+              <Pair k="SOL" v={load.sol === null ? '—' : load.sol.toString()} />
+              <View className="mt-2">
+                <Text className="text-gray-500 text-xs mb-1">address</Text>
+                <Address address={load.adapter.address} truncate={false} />
+              </View>
+            </Card>
           </Section>
 
           {!load.vault?.data ? (
-            <View>
-              <View className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-900 rounded-xl p-4 mb-4">
-                <Text className="text-yellow-800 dark:text-yellow-200 font-semibold text-sm mb-1">
+            <>
+              <Card variant="accent" padding="md">
+                <Text className="text-violet-200 font-semibold text-sm mb-1">
                   No vault yet for this authority
                 </Text>
-                <Text className="text-yellow-700 dark:text-yellow-300 text-xs leading-relaxed">
+                <Text className="text-violet-200/80 text-xs leading-relaxed">
                   pocket_vault is a per-authority PDA. Opening the vault
                   initializes the PDA + a vault ATA for fake-USDC
                   ({short(FAKE_USDC_MINT)}). Rent ≈ 0.003 SOL.
                 </Text>
-              </View>
+              </Card>
 
               {(load.sol ?? 0) < 0.01 && (
-                <View className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-900 rounded-xl p-4 mb-4">
-                  <Text className="text-red-800 dark:text-red-200 font-semibold text-sm mb-1">
-                    Authority has 0 SOL — openVault will fail at simulation
-                  </Text>
-                  <Text className="text-red-700 dark:text-red-300 text-xs leading-relaxed mb-2">
-                    Fund this address from your Mac (covers SOL + fake-USDC):
-                  </Text>
-                  <Text
-                    selectable
-                    className="text-red-900 dark:text-red-100 text-xs font-mono leading-relaxed"
-                  >
-                    cd pocket/tools/x402-server{'\n'}
-                    npm run mint-to -- {load.adapter.address}
-                  </Text>
-                  <Text className="text-red-700 dark:text-red-300 text-xs mt-2 leading-relaxed">
-                    Then tap Open vault again.
-                  </Text>
+                <View className="mt-3">
+                  <Card padding="md">
+                    <Text className="text-red-300 font-semibold text-sm mb-1">
+                      Authority has 0 SOL — openVault will fail at simulation
+                    </Text>
+                    <Text className="text-gray-400 text-xs leading-relaxed mb-2">
+                      Fund this address from your Mac (covers SOL + fake-USDC):
+                    </Text>
+                    <Text
+                      selectable
+                      className="text-gray-200 text-xs font-mono leading-relaxed"
+                    >
+                      cd pocket/tools/x402-server{'\n'}
+                      npm run mint-to -- {load.adapter.address}
+                    </Text>
+                    <Text className="text-gray-400 text-xs mt-2 leading-relaxed">
+                      Then tap Open vault again.
+                    </Text>
+                  </Card>
                 </View>
               )}
 
-              <Pressable
-                onPress={onOpenVault}
-                disabled={action.busy !== 'idle' || (load.sol ?? 0) < 0.01}
-                className={`px-6 py-4 rounded-xl mb-3 ${
-                  action.busy === 'idle' && (load.sol ?? 0) >= 0.01
-                    ? 'bg-blue-600 active:bg-blue-700'
-                    : 'bg-gray-300 dark:bg-gray-800'
-                }`}
-              >
-                <Text className="text-white font-bold text-center">
-                  {action.busy === 'opening'
-                    ? 'opening vault…'
-                    : '1) Open vault'}
-                </Text>
-              </Pressable>
-            </View>
+              <View className="mt-3">
+                <Button
+                  variant="primary"
+                  onPress={onOpenVault}
+                  loading={action.busy === 'opening'}
+                  disabled={action.busy !== 'idle' || (load.sol ?? 0) < 0.01}
+                  haptic={false}
+                >
+                  {action.busy === 'opening' ? 'opening vault…' : '1) Open vault'}
+                </Button>
+              </View>
+            </>
           ) : (
             <Section title="Vault">
-              <Pair k="PDA" v={short(load.vault.pda.toBase58())} />
-              <Pair k="mint" v={short(load.vault.data.mint.toBase58())} />
-              <Pair
-                k="policy set?"
-                v={load.vault.data.policySet ? 'yes' : 'no'}
-              />
-              <Pair
-                k="opened at slot"
-                v={load.vault.data.openedAtSlot.toString()}
-              />
+              <Card padding="md">
+                <Pair k="PDA" v={short(load.vault.pda.toBase58())} />
+                <Pair k="mint" v={short(load.vault.data.mint.toBase58())} />
+                <Pair
+                  k="policy set?"
+                  v={load.vault.data.policySet ? 'yes' : 'no'}
+                />
+                <Pair
+                  k="opened at slot"
+                  v={load.vault.data.openedAtSlot.toString()}
+                />
+              </Card>
             </Section>
           )}
 
           {load.vault?.data && (
             <>
               <Section title="Policy form">
-                <NumberField
-                  label="max per tx (USDC)"
-                  value={form.maxPerTx}
-                  onChange={(v) => setForm({ ...form, maxPerTx: v })}
-                />
-                <NumberField
-                  label="max per day (USDC)"
-                  value={form.maxPerDay}
-                  onChange={(v) => setForm({ ...form, maxPerDay: v })}
-                />
-                <NumberField
-                  label="expiry slot (0 = never)"
-                  value={form.expirySlot}
-                  onChange={(v) => setForm({ ...form, expirySlot: v })}
-                />
-                <NumberField
-                  label="slots per window (216000 ≈ 24h)"
-                  value={form.slotsPerWindow}
-                  onChange={(v) => setForm({ ...form, slotsPerWindow: v })}
-                />
+                <Card padding="md">
+                  <TextField
+                    label="max per tx (USDC)"
+                    value={form.maxPerTx}
+                    onChangeText={(v) => setForm({ ...form, maxPerTx: v })}
+                    keyboardType="decimal-pad"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  <TextField
+                    label="max per day (USDC)"
+                    value={form.maxPerDay}
+                    onChangeText={(v) => setForm({ ...form, maxPerDay: v })}
+                    keyboardType="decimal-pad"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  <TextField
+                    label="expiry slot (0 = never)"
+                    value={form.expirySlot}
+                    onChangeText={(v) => setForm({ ...form, expirySlot: v })}
+                    keyboardType="decimal-pad"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  <TextField
+                    label="slots per window (216000 ≈ 24h)"
+                    value={form.slotsPerWindow}
+                    onChangeText={(v) =>
+                      setForm({ ...form, slotsPerWindow: v })
+                    }
+                    keyboardType="decimal-pad"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </Card>
               </Section>
 
-              <Pressable
-                onPress={onSetPolicy}
-                disabled={action.busy !== 'idle'}
-                className={`px-6 py-4 rounded-xl mb-3 ${
-                  action.busy === 'idle'
-                    ? 'bg-emerald-600 active:bg-emerald-700'
-                    : 'bg-gray-300 dark:bg-gray-800'
-                }`}
-              >
-                <Text className="text-white font-bold text-center">
+              <View className="mb-4">
+                <Button
+                  variant="primary"
+                  onPress={onSetPolicy}
+                  loading={action.busy === 'setting'}
+                  disabled={action.busy !== 'idle'}
+                  haptic={false}
+                >
                   {action.busy === 'setting'
                     ? 'signing + sending…'
                     : load.policy
                       ? 'Update on-chain policy'
                       : 'Push policy on-chain'}
-                </Text>
-              </Pressable>
+                </Button>
+              </View>
 
               {load.policy && (
                 <Section title="Current on-chain policy">
-                  <Pair
-                    k="max per tx"
-                    v={`${fmtUsdcFromBn(load.policy.data.maxPerTxBaseUnits)} USDC`}
-                  />
-                  <Pair
-                    k="max per day"
-                    v={`${fmtUsdcFromBn(load.policy.data.maxPerDayBaseUnits)} USDC`}
-                  />
-                  <Pair
-                    k="spent in window"
-                    v={`${fmtUsdcFromBn(load.policy.data.spentInWindow)} USDC`}
-                  />
-                  <Pair
-                    k="window start slot"
-                    v={load.policy.data.dailyWindowStartSlot.toString()}
-                  />
-                  <Pair
-                    k="slots per window"
-                    v={load.policy.data.slotsPerWindow.toString()}
-                  />
-                  <Pair
-                    k="expiry slot"
-                    v={
-                      load.policy.data.expirySlot.toString() === '0'
-                        ? 'never'
-                        : load.policy.data.expirySlot.toString()
-                    }
-                  />
+                  <Card padding="md">
+                    <Pair
+                      k="max per tx"
+                      v={`${fmtUsdcFromBn(load.policy.data.maxPerTxBaseUnits)} USDC`}
+                    />
+                    <Pair
+                      k="max per day"
+                      v={`${fmtUsdcFromBn(load.policy.data.maxPerDayBaseUnits)} USDC`}
+                    />
+                    <Pair
+                      k="spent in window"
+                      v={`${fmtUsdcFromBn(load.policy.data.spentInWindow)} USDC`}
+                    />
+                    <Pair
+                      k="window start slot"
+                      v={load.policy.data.dailyWindowStartSlot.toString()}
+                    />
+                    <Pair
+                      k="slots per window"
+                      v={load.policy.data.slotsPerWindow.toString()}
+                    />
+                    <Pair
+                      k="expiry slot"
+                      v={
+                        load.policy.data.expirySlot.toString() === '0'
+                          ? 'never'
+                          : load.policy.data.expirySlot.toString()
+                      }
+                    />
+                  </Card>
                 </Section>
               )}
             </>
           )}
 
           {action.lastError && (
-            <ErrorPanel title="Error" message={action.lastError} />
+            <ErrorCard title="Error" message={action.lastError} />
           )}
 
           {action.lastSig && (
-            <View className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-900 rounded-xl p-4 mt-2">
-              <Text className="text-green-800 dark:text-green-200 font-bold mb-1">
+            <Card variant="accent" padding="md">
+              <Text className="text-emerald-300 font-bold mb-1">
                 ✓ tx confirmed
               </Text>
-              <Text className="text-green-900 dark:text-green-100 text-xs font-mono mb-1">
+              <Text className="text-gray-200 text-xs font-mono mb-1">
                 {short(action.lastSig)}
               </Text>
               <Pressable
@@ -366,17 +376,15 @@ export default function PolicyEditorScreen() {
                   )
                 }
               >
-                <Text className="text-green-700 dark:text-green-300 text-xs underline">
+                <Text className="text-violet-300 text-xs underline">
                   open on Solana Explorer
                 </Text>
               </Pressable>
-            </View>
+            </Card>
           )}
         </>
       )}
-
-      <StatusBar style="auto" />
-    </ScrollView>
+    </Screen>
   )
 }
 
@@ -437,32 +445,6 @@ async function fetchSol(addr: PublicKey): Promise<number | null> {
   }
 }
 
-function NumberField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string
-  value: string
-  onChange: (v: string) => void
-}) {
-  return (
-    <View className="mb-3">
-      <Text className="text-gray-600 dark:text-gray-400 text-xs mb-1">
-        {label}
-      </Text>
-      <TextInput
-        value={value}
-        onChangeText={onChange}
-        keyboardType="decimal-pad"
-        autoCapitalize="none"
-        autoCorrect={false}
-        className="bg-white dark:bg-black border border-gray-200 dark:border-gray-800 rounded-md px-3 py-2 text-gray-900 dark:text-white text-sm font-mono"
-      />
-    </View>
-  )
-}
-
 function Section({
   title,
   children,
@@ -471,13 +453,11 @@ function Section({
   children: React.ReactNode
 }) {
   return (
-    <View className="mb-6">
-      <Text className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2 font-semibold">
+    <View className="mb-5">
+      <Text className="text-xs uppercase tracking-wider text-gray-400 mb-2 font-semibold">
         {title}
       </Text>
-      <View className="bg-gray-50 dark:bg-gray-900 rounded-xl p-4">
-        {children}
-      </View>
+      {children}
     </View>
   )
 }
@@ -485,21 +465,19 @@ function Section({
 function Pair({ k, v }: { k: string; v: string }) {
   return (
     <View className="flex-row justify-between py-1.5">
-      <Text className="text-gray-600 dark:text-gray-400 text-sm">{k}</Text>
-      <Text className="text-gray-900 dark:text-white text-sm font-medium font-mono">
-        {v}
-      </Text>
+      <Text className="text-gray-400 text-sm">{k}</Text>
+      <Text className="text-white text-sm font-medium font-mono">{v}</Text>
     </View>
   )
 }
 
-function ErrorPanel({ title, message }: { title: string; message: string }) {
+function ErrorCard({ title, message }: { title: string; message: string }) {
   return (
-    <View className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-900 rounded-xl p-4 mb-4">
-      <Text className="text-red-800 dark:text-red-200 font-semibold mb-1">
-        {title}
-      </Text>
-      <Text className="text-red-700 dark:text-red-300 text-xs">{message}</Text>
+    <View className="mb-4">
+      <Card padding="md">
+        <Text className="text-red-300 font-semibold mb-1">{title}</Text>
+        <Text className="text-gray-300 text-xs">{message}</Text>
+      </Card>
     </View>
   )
 }

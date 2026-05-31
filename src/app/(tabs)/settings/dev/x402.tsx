@@ -1,16 +1,15 @@
 import { useEffect, useState } from 'react'
-import {
-  ActivityIndicator,
-  Linking,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native'
-import { StatusBar } from 'expo-status-bar'
+import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native'
 import { Connection, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js'
 import { getAssociatedTokenAddressSync } from '@solana/spl-token'
+
+import { Screen } from '../../../../ui/Screen'
+import { Header } from '../../../../ui/Header'
+import { Card } from '../../../../ui/Card'
+import { Button } from '../../../../ui/Button'
+import { TextField } from '../../../../ui/TextField'
+import { Address } from '../../../../ui/Address'
+import { useHaptic } from '../../../../ui/useHaptic'
 
 import { DEVNET_RPC } from '../../../../anchor/constants'
 import { createPocketPayClient } from '../../../../x402/payClient'
@@ -22,7 +21,6 @@ import {
 // Same mint the Day 9 server expects. Treasury also matches —
 // see tools/x402-server/constants.ts.
 const FAKE_USDC_MINT = 'BofnM1aZaTJfxpoDD82oDJQEcSEyKtHjEEEUujCmE29v'
-const FAKE_USDC_DECIMALS = 6
 // Belt against a misconfig serving an absurd amount. The Day 9 route
 // is 0.01 fake-USDC.
 const MAX_AMOUNT_ATOMIC = 50_000n // 0.05 fake-USDC
@@ -45,6 +43,7 @@ type State =
   | { kind: 'error'; message: string }
 
 export default function X402TestScreen() {
+  const trigger = useHaptic()
   const [state, setState] = useState<State>({
     kind: 'loading',
     label: 'loading Keystore key…',
@@ -79,6 +78,7 @@ export default function X402TestScreen() {
 
   async function onRefresh() {
     if (state.kind !== 'ready' || state.busy !== 'idle') return
+    trigger('tap')
     setState({ ...state, busy: 'refreshing' })
     const balances = await fetchBalances(state.adapter.publicKey)
     setState({ ...state, busy: 'idle', sol: balances.sol, usdc: balances.usdc })
@@ -86,7 +86,9 @@ export default function X402TestScreen() {
 
   async function onPay() {
     if (state.kind !== 'ready' || state.busy !== 'idle') return
+    trigger('tap')
     if (!state.url.trim()) {
+      trigger('error')
       setState({
         ...state,
         result: { kind: 'err', message: 'enter a server URL' },
@@ -107,6 +109,7 @@ export default function X402TestScreen() {
         .catch(() => ({ rawText: '<non-json body>' }))
       const balances = await fetchBalances(state.adapter.publicKey)
       if (res.status !== 200) {
+        trigger('error')
         setState({
           ...state,
           busy: 'idle',
@@ -119,6 +122,7 @@ export default function X402TestScreen() {
         })
         return
       }
+      trigger('success')
       setState({
         ...state,
         busy: 'idle',
@@ -131,6 +135,7 @@ export default function X402TestScreen() {
         },
       })
     } catch (e) {
+      trigger('error')
       setState({
         ...state,
         busy: 'idle',
@@ -140,150 +145,138 @@ export default function X402TestScreen() {
   }
 
   return (
-    <ScrollView
-      className="flex-1 bg-white dark:bg-black"
-      contentContainerClassName="px-6 pt-16 pb-12"
-    >
-      <Text className="text-3xl font-extrabold text-gray-900 dark:text-white mb-1">
-        x402 Test
-      </Text>
-      <Text className="text-sm text-gray-500 dark:text-gray-400 mb-8">
-        Pay a real x402 endpoint with the Keystore key
-      </Text>
+    <Screen>
+      <Header
+        title="x402 test"
+        subtitle="Pay a real x402 endpoint with the Keystore key"
+      />
 
       {state.kind === 'loading' && (
         <View className="items-center mt-8">
-          <ActivityIndicator />
-          <Text className="text-gray-500 dark:text-gray-400 mt-3">
-            {state.label}
-          </Text>
+          <ActivityIndicator color="#A78BFA" />
+          <Text className="text-gray-400 mt-3 text-sm">{state.label}</Text>
         </View>
       )}
 
-      {state.kind === 'error' && <ErrorPanel message={state.message} />}
+      {state.kind === 'error' && <ErrorCard message={state.message} />}
 
       {state.kind === 'ready' && (
         <View>
           <Section title="Signer">
-            <Pair k="SOL" v={state.sol === null ? '—' : `${state.sol}`} />
-            <Pair
-              k="fake-USDC"
-              v={state.usdc?.ui ?? '— (no ATA)'}
-            />
-            <Text className="text-gray-600 dark:text-gray-400 text-xs mt-2 mb-1">
-              address (long-press to copy)
-            </Text>
-            <Text
-              selectable
-              className="text-gray-900 dark:text-white text-xs font-mono"
-            >
-              {state.adapter.address}
-            </Text>
+            <Card padding="md">
+              <Pair k="SOL" v={state.sol === null ? '—' : `${state.sol}`} />
+              <Pair k="fake-USDC" v={state.usdc?.ui ?? '— (no ATA)'} />
+              <View className="mt-2">
+                <Text className="text-gray-500 text-xs mb-1">address</Text>
+                <Address address={state.adapter.address} truncate={false} />
+              </View>
+            </Card>
           </Section>
 
           {(state.usdc === null ||
             Number(state.usdc?.atomic ?? '0') < 10_000) && (
-            <View className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-900 rounded-xl p-4 mb-6">
-              <Text className="text-yellow-800 dark:text-yellow-200 text-xs font-semibold mb-1">
-                Address needs fake-USDC before paying
-              </Text>
-              <Text className="text-yellow-700 dark:text-yellow-300 text-xs leading-relaxed">
-                From your Mac, run:{'\n'}
-                <Text className="font-mono">
-                  cd tools/x402-server{'\n'}
-                  npm run mint-to -- {state.adapter.address.slice(0, 12)}…
+            <View className="mb-5">
+              <Card variant="accent" padding="md">
+                <Text className="text-amber-300 text-xs font-semibold mb-1">
+                  Address needs fake-USDC before paying
                 </Text>
-                {'\n'}Then tap Refresh.
-              </Text>
+                <Text className="text-amber-200/80 text-xs leading-relaxed">
+                  From your Mac, run:{'\n'}
+                  <Text className="font-mono">
+                    cd tools/x402-server{'\n'}
+                    npm run mint-to -- {state.adapter.address.slice(0, 12)}…
+                  </Text>
+                  {'\n'}Then tap Refresh.
+                </Text>
+              </Card>
             </View>
           )}
 
           <Section title="Server URL">
-            <TextInput
-              value={state.url}
-              onChangeText={(t) => setState({ ...state, url: t })}
-              autoCapitalize="none"
-              autoCorrect={false}
-              placeholder="http://10.0.2.2:4242/api/quote"
-              placeholderTextColor="#9CA3AF"
-              className="text-sm font-mono text-gray-900 dark:text-white py-2"
-            />
-            <Text className="text-gray-500 dark:text-gray-400 text-xs mt-2 leading-relaxed">
-              Defaults to <Text className="font-mono">10.0.2.2:4242</Text>{' '}
-              (Android emulator → host loopback). For a physical device, use
-              your Mac's LAN IP or an ngrok tunnel URL.
-            </Text>
+            <Card padding="md">
+              <TextField
+                value={state.url}
+                onChangeText={(t) => setState({ ...state, url: t })}
+                autoCapitalize="none"
+                autoCorrect={false}
+                placeholder="http://10.0.2.2:4242/api/quote"
+              />
+              <Text className="text-gray-500 text-xs leading-relaxed">
+                Defaults to <Text className="font-mono">10.0.2.2:4242</Text>{' '}
+                (Android emulator → host loopback). For a physical device, use
+                your Mac's LAN IP or an ngrok tunnel URL.
+              </Text>
+            </Card>
           </Section>
 
-          <Pressable
-            onPress={onPay}
-            disabled={state.busy !== 'idle'}
-            className={`px-6 py-4 rounded-xl mb-3 ${
-              state.busy === 'idle'
-                ? 'bg-emerald-600 active:bg-emerald-700'
-                : 'bg-gray-300 dark:bg-gray-800'
-            }`}
-          >
-            <Text className="text-white font-bold text-center">
+          <View className="gap-2 mb-4">
+            <Button
+              variant="primary"
+              onPress={onPay}
+              loading={state.busy === 'paying'}
+              disabled={state.busy !== 'idle'}
+              haptic={false}
+            >
               {state.busy === 'paying'
                 ? 'building + signing payment…'
                 : 'Make paid request'}
-            </Text>
-          </Pressable>
+            </Button>
 
-          <Pressable
-            onPress={onRefresh}
-            disabled={state.busy !== 'idle'}
-            className="px-6 py-2 rounded-xl mb-6 bg-gray-200 dark:bg-gray-800 active:bg-gray-300"
-          >
-            <Text className="text-gray-800 dark:text-gray-200 font-semibold text-center text-xs">
-              {state.busy === 'refreshing' ? 'refreshing…' : 'Refresh balance'}
-            </Text>
-          </Pressable>
+            <Button
+              variant="ghost"
+              onPress={onRefresh}
+              disabled={state.busy !== 'idle'}
+              haptic={false}
+            >
+              {state.busy === 'refreshing'
+                ? 'refreshing…'
+                : 'Refresh balance'}
+            </Button>
+          </View>
 
           {state.result.kind === 'err' && (
-            <ErrorPanel message={state.result.message} />
+            <ErrorCard message={state.result.message} />
           )}
 
           {state.result.kind === 'ok' && (
-            <View className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-900 rounded-xl p-4 mb-4">
-              <Text className="text-green-800 dark:text-green-200 font-bold mb-2">
-                ✓ Paid + got 200 from x402 endpoint
-              </Text>
-              {state.result.paymentSig && (
-                <View className="mb-3">
-                  <Text className="text-green-700 dark:text-green-300 text-xs mb-1">
-                    payment tx
-                  </Text>
-                  <Text className="text-green-900 dark:text-green-100 text-xs font-mono mb-1">
-                    {short(state.result.paymentSig)}
-                  </Text>
-                  <Pressable
-                    onPress={() =>
-                      Linking.openURL(
-                        `https://explorer.solana.com/tx/${state.result.kind === 'ok' ? state.result.paymentSig : ''}?cluster=devnet`,
-                      )
-                    }
-                  >
-                    <Text className="text-green-700 dark:text-green-300 text-xs underline">
-                      open on Solana Explorer
+            <View className="mb-4">
+              <Card variant="accent" padding="md">
+                <Text className="text-emerald-300 font-bold mb-2">
+                  ✓ Paid + got 200 from x402 endpoint
+                </Text>
+                {state.result.paymentSig && (
+                  <View className="mb-3">
+                    <Text className="text-emerald-200/80 text-xs mb-1">
+                      payment tx
                     </Text>
-                  </Pressable>
-                </View>
-              )}
-              <Text className="text-green-700 dark:text-green-300 text-xs mb-1">
-                response body
-              </Text>
-              <Text className="text-green-900 dark:text-green-100 text-xs font-mono">
-                {JSON.stringify(state.result.body, null, 2)}
-              </Text>
+                    <Text className="text-white text-xs font-mono mb-1">
+                      {short(state.result.paymentSig)}
+                    </Text>
+                    <Pressable
+                      onPress={() =>
+                        Linking.openURL(
+                          `https://explorer.solana.com/tx/${state.result.kind === 'ok' ? state.result.paymentSig : ''}?cluster=devnet`,
+                        )
+                      }
+                    >
+                      <Text className="text-violet-300 text-xs underline">
+                        open on Solana Explorer
+                      </Text>
+                    </Pressable>
+                  </View>
+                )}
+                <Text className="text-emerald-200/80 text-xs mb-1">
+                  response body
+                </Text>
+                <Text className="text-white text-xs font-mono">
+                  {JSON.stringify(state.result.body, null, 2)}
+                </Text>
+              </Card>
             </View>
           )}
         </View>
       )}
-
-      <StatusBar style="auto" />
-    </ScrollView>
+    </Screen>
   )
 }
 
@@ -333,13 +326,13 @@ function short(s: string): string {
   return s.slice(0, 8) + '…' + s.slice(-6)
 }
 
-function ErrorPanel({ message }: { message: string }) {
+function ErrorCard({ message }: { message: string }) {
   return (
-    <View className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-900 rounded-xl p-4 mb-4">
-      <Text className="text-red-800 dark:text-red-200 font-semibold mb-1">
-        Error
-      </Text>
-      <Text className="text-red-700 dark:text-red-300 text-xs">{message}</Text>
+    <View className="mb-4">
+      <Card padding="md">
+        <Text className="text-red-300 font-semibold mb-1">Error</Text>
+        <Text className="text-gray-300 text-xs">{message}</Text>
+      </Card>
     </View>
   )
 }
@@ -352,13 +345,11 @@ function Section({
   children: React.ReactNode
 }) {
   return (
-    <View className="mb-6">
-      <Text className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2 font-semibold">
+    <View className="mb-5">
+      <Text className="text-xs uppercase tracking-wider text-gray-400 mb-2 font-semibold">
         {title}
       </Text>
-      <View className="bg-gray-50 dark:bg-gray-900 rounded-xl p-4">
-        {children}
-      </View>
+      {children}
     </View>
   )
 }
@@ -366,10 +357,8 @@ function Section({
 function Pair({ k, v }: { k: string; v: string }) {
   return (
     <View className="flex-row justify-between py-1.5">
-      <Text className="text-gray-600 dark:text-gray-400 text-sm">{k}</Text>
-      <Text className="text-gray-900 dark:text-white text-sm font-medium">
-        {v}
-      </Text>
+      <Text className="text-gray-400 text-sm">{k}</Text>
+      <Text className="text-white text-sm font-medium">{v}</Text>
     </View>
   )
 }

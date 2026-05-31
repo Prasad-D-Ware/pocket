@@ -1,13 +1,5 @@
 import { useEffect, useState } from 'react'
-import {
-  ActivityIndicator,
-  Linking,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from 'react-native'
-import { StatusBar } from 'expo-status-bar'
+import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native'
 import {
   appendTransactionMessageInstruction,
   createSolanaRpc,
@@ -18,11 +10,21 @@ import {
   setTransactionMessageFeePayerSigner,
   setTransactionMessageLifetimeUsingBlockhash,
   signTransactionMessageWithSigners,
-  type Address,
+  type Address as KitAddress,
 } from '@solana/kit'
 import { getTransferSolInstruction } from '@solana-program/system'
 
-import { createPocketKitSigner, type PocketSigner } from '../../../../signer/pocketSigner'
+import { Screen } from '../../../../ui/Screen'
+import { Header } from '../../../../ui/Header'
+import { Card } from '../../../../ui/Card'
+import { Button } from '../../../../ui/Button'
+import { Address } from '../../../../ui/Address'
+import { useHaptic } from '../../../../ui/useHaptic'
+
+import {
+  createPocketKitSigner,
+  type PocketSigner,
+} from '../../../../signer/pocketSigner'
 import { DEVNET_RPC } from '../../../../anchor/constants'
 
 const LAMPORTS_PER_SOL = 1_000_000_000n
@@ -45,6 +47,7 @@ type State =
     }
 
 export default function SendTestScreen() {
+  const trigger = useHaptic()
   const [state, setState] = useState<State>({
     kind: 'loading',
     label: 'loading Keystore signer…',
@@ -79,21 +82,23 @@ export default function SendTestScreen() {
 
   async function reloadBalance() {
     if (state.kind !== 'ready') return
+    trigger('tap')
     const balance = await fetchBalance(state.signer.address)
     setState({ ...state, balanceLamports: balance })
   }
 
   async function onAirdrop() {
     if (state.kind !== 'ready' || state.busy !== 'idle') return
+    trigger('tap')
     setState({ ...state, busy: 'airdropping', lastError: null })
     try {
       const rpc = createSolanaRpc(DEVNET_RPC)
       const sig = await rpc
         .requestAirdrop(state.signer.address, lamports(AIRDROP_LAMPORTS))
         .send()
-      // Tiny grace period for the airdrop to land on the RPC node.
       await sleep(2000)
       const balance = await fetchBalance(state.signer.address)
+      trigger('success')
       setState({
         ...state,
         busy: 'idle',
@@ -102,6 +107,7 @@ export default function SendTestScreen() {
         lastError: null,
       })
     } catch (e) {
+      trigger('error')
       setState({
         ...state,
         busy: 'idle',
@@ -112,11 +118,13 @@ export default function SendTestScreen() {
 
   async function onSend() {
     if (state.kind !== 'ready' || state.busy !== 'idle') return
+    trigger('tap')
     setState({ ...state, busy: 'sending', lastError: null })
     try {
       const sig = await sendSelfTransfer(state.signer, SELF_TRANSFER_LAMPORTS)
       await sleep(1500)
       const balance = await fetchBalance(state.signer.address)
+      trigger('success')
       setState({
         ...state,
         busy: 'idle',
@@ -125,138 +133,113 @@ export default function SendTestScreen() {
         lastError: null,
       })
     } catch (e) {
+      trigger('error')
       setState({ ...state, busy: 'idle', lastError: errMsg(e) })
     }
   }
 
   return (
-    <ScrollView
-      className="flex-1 bg-white dark:bg-black"
-      contentContainerClassName="px-6 pt-16 pb-12"
-    >
-      <Text className="text-3xl font-extrabold text-gray-900 dark:text-white mb-1">
-        Send Test
-      </Text>
-      <Text className="text-sm text-gray-500 dark:text-gray-400 mb-8">
-        Sign a real devnet SOL transfer with the Keystore key
-      </Text>
+    <Screen>
+      <Header
+        title="Send test"
+        subtitle="Sign a real devnet SOL transfer with the Keystore key"
+      />
 
       {state.kind === 'loading' && (
         <View className="items-center mt-8">
-          <ActivityIndicator />
-          <Text className="text-gray-500 dark:text-gray-400 mt-3">
-            {state.label}
-          </Text>
+          <ActivityIndicator color="#A78BFA" />
+          <Text className="text-gray-400 mt-3 text-sm">{state.label}</Text>
         </View>
       )}
 
-      {state.kind === 'error' && <ErrorPanel message={state.message} />}
+      {state.kind === 'error' && <ErrorCard message={state.message} />}
 
       {state.kind === 'ready' && (
         <View>
           <Section title="Signer">
-            <Pair
-              k="balance"
-              v={
-                state.balanceLamports === null
-                  ? '—'
-                  : fmtSol(state.balanceLamports)
-              }
-            />
-            <Text className="text-gray-600 dark:text-gray-400 text-xs mt-2 mb-1">
-              address (long-press to copy)
-            </Text>
-            <Text
-              selectable
-              className="text-gray-900 dark:text-white text-xs font-mono"
-            >
-              {state.signer.address}
-            </Text>
+            <Card padding="md">
+              <Pair
+                k="balance"
+                v={
+                  state.balanceLamports === null
+                    ? '—'
+                    : fmtSol(state.balanceLamports)
+                }
+              />
+              <View className="mt-2">
+                <Text className="text-gray-500 text-xs mb-1">address</Text>
+                <Address address={state.signer.address} truncate={false} />
+              </View>
+            </Card>
           </Section>
 
-          <Pressable
-            onPress={onAirdrop}
-            disabled={state.busy !== 'idle'}
-            className={`px-6 py-4 rounded-xl mb-3 ${
-              state.busy === 'idle'
-                ? 'bg-blue-600 active:bg-blue-700'
-                : 'bg-gray-300 dark:bg-gray-800'
-            }`}
-          >
-            <Text className="text-white font-bold text-center">
+          <View className="gap-2 mb-4">
+            <Button
+              variant="primary"
+              onPress={onAirdrop}
+              loading={state.busy === 'airdropping'}
+              disabled={state.busy !== 'idle'}
+              haptic={false}
+            >
               {state.busy === 'airdropping'
                 ? 'requesting airdrop…'
                 : '1) Airdrop 0.5 SOL (devnet)'}
-            </Text>
-          </Pressable>
+            </Button>
 
-          <Pressable
-            onPress={onSend}
-            disabled={
-              state.busy !== 'idle' ||
-              (state.balanceLamports ?? 0n) < SELF_TRANSFER_LAMPORTS + 5_000n
-            }
-            className={`px-6 py-4 rounded-xl mb-3 ${
-              state.busy === 'idle' &&
-              (state.balanceLamports ?? 0n) >= SELF_TRANSFER_LAMPORTS + 5_000n
-                ? 'bg-gray-900 dark:bg-gray-100 active:opacity-80'
-                : 'bg-gray-300 dark:bg-gray-800'
-            }`}
-          >
-            <Text
-              className={`font-bold text-center ${
-                state.busy === 'idle' &&
-                (state.balanceLamports ?? 0n) >= SELF_TRANSFER_LAMPORTS + 5_000n
-                  ? 'text-white dark:text-gray-900'
-                  : 'text-white'
-              }`}
+            <Button
+              variant="primary"
+              onPress={onSend}
+              loading={state.busy === 'sending'}
+              disabled={
+                state.busy !== 'idle' ||
+                (state.balanceLamports ?? 0n) <
+                  SELF_TRANSFER_LAMPORTS + 5_000n
+              }
+              haptic={false}
             >
               {state.busy === 'sending'
                 ? 'signing + sending…'
                 : '2) Send 0.000001 SOL to self (signed by Keystore)'}
-            </Text>
-          </Pressable>
+            </Button>
 
-          <Pressable
-            onPress={reloadBalance}
-            className="px-6 py-2 rounded-xl mb-6 bg-gray-200 dark:bg-gray-800 active:bg-gray-300"
-          >
-            <Text className="text-gray-800 dark:text-gray-200 font-semibold text-center text-xs">
+            <Button variant="ghost" onPress={reloadBalance} haptic={false}>
               Refresh balance
-            </Text>
-          </Pressable>
+            </Button>
+          </View>
 
-          {state.lastError && <ErrorPanel message={state.lastError} />}
+          {state.lastError && <ErrorCard message={state.lastError} />}
 
           {(state.lastError || (state.balanceLamports ?? 0n) === 0n) && (
-            <View className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 mb-4">
-              <Text className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2 font-semibold">
-                If devnet faucet is rate-limited
-              </Text>
-              <Text className="text-gray-700 dark:text-gray-300 text-xs mb-2">
-                Fund this address manually with any of:
-              </Text>
-              <Text className="text-gray-700 dark:text-gray-300 text-xs mb-1">
-                • Web faucet:{' '}
-                <Text
-                  className="underline text-blue-700 dark:text-blue-300"
-                  onPress={() => Linking.openURL('https://faucet.solana.com')}
-                >
-                  faucet.solana.com
-                </Text>{' '}
-                (paste address, select devnet)
-              </Text>
-              <Text className="text-gray-700 dark:text-gray-300 text-xs mb-1">
-                • CLI:{' '}
-                <Text className="font-mono">
-                  solana transfer{' '}
-                  {state.signer.address.slice(0, 6)}…{' '}
-                  0.1 --allow-unfunded-recipient -u devnet
+            <View className="mb-4">
+              <Card padding="md">
+                <Text className="text-xs uppercase tracking-wider text-gray-400 mb-2 font-semibold">
+                  If devnet faucet is rate-limited
                 </Text>
-              </Text>
-              <Text className="text-gray-700 dark:text-gray-300 text-xs">
-                Then tap Refresh balance.
-              </Text>
+                <Text className="text-gray-300 text-xs mb-2">
+                  Fund this address manually with any of:
+                </Text>
+                <Text className="text-gray-300 text-xs mb-1">
+                  • Web faucet:{' '}
+                  <Text
+                    className="underline text-violet-300"
+                    onPress={() => Linking.openURL('https://faucet.solana.com')}
+                  >
+                    faucet.solana.com
+                  </Text>{' '}
+                  (paste address, select devnet)
+                </Text>
+                <Text className="text-gray-300 text-xs mb-1">
+                  • CLI:{' '}
+                  <Text className="font-mono">
+                    solana transfer{' '}
+                    {state.signer.address.slice(0, 6)}…{' '}
+                    0.1 --allow-unfunded-recipient -u devnet
+                  </Text>
+                </Text>
+                <Text className="text-gray-300 text-xs">
+                  Then tap Refresh balance.
+                </Text>
+              </Card>
             </View>
           )}
 
@@ -278,16 +261,16 @@ export default function SendTestScreen() {
           )}
         </View>
       )}
-
-      <StatusBar style="auto" />
-    </ScrollView>
+    </Screen>
   )
 }
 
-async function fetchBalance(addr: Address): Promise<bigint | null> {
+async function fetchBalance(addr: KitAddress): Promise<bigint | null> {
   try {
     const rpc = createSolanaRpc(DEVNET_RPC)
-    const { value } = await rpc.getBalance(addr, { commitment: 'confirmed' }).send()
+    const { value } = await rpc
+      .getBalance(addr, { commitment: 'confirmed' })
+      .send()
     return BigInt(value)
   } catch {
     return null
@@ -343,65 +326,37 @@ function ResultPanel({
   footer?: string
 }) {
   const url = `https://explorer.solana.com/tx/${sig}?cluster=devnet`
+  const titleColor =
+    tone === 'success' ? 'text-emerald-300' : 'text-violet-300'
+  const bodyColor =
+    tone === 'success' ? 'text-emerald-200/80' : 'text-violet-200/80'
   return (
-    <View
-      className={`rounded-xl p-4 mb-4 ${
-        tone === 'success'
-          ? 'bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-900'
-          : 'bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-900'
-      }`}
-    >
-      <Text
-        className={`font-bold mb-1 ${
-          tone === 'success'
-            ? 'text-green-800 dark:text-green-200'
-            : 'text-blue-800 dark:text-blue-200'
-        }`}
-      >
-        {title}
-      </Text>
-      <Text
-        className={`text-xs mb-2 font-mono ${
-          tone === 'success'
-            ? 'text-green-700 dark:text-green-300'
-            : 'text-blue-700 dark:text-blue-300'
-        }`}
-      >
-        {short(sig)}
-      </Text>
-      <Pressable onPress={() => Linking.openURL(url)}>
-        <Text
-          className={`text-xs underline ${
-            tone === 'success'
-              ? 'text-green-700 dark:text-green-300'
-              : 'text-blue-700 dark:text-blue-300'
-          }`}
-        >
-          open on Solana Explorer
+    <View className="mb-4">
+      <Card variant="accent" padding="md">
+        <Text className={`font-bold mb-1 ${titleColor}`}>{title}</Text>
+        <Text className={`text-xs mb-2 font-mono ${bodyColor}`}>
+          {short(sig)}
         </Text>
-      </Pressable>
-      {footer && (
-        <Text
-          className={`text-xs mt-2 ${
-            tone === 'success'
-              ? 'text-green-700 dark:text-green-300'
-              : 'text-blue-700 dark:text-blue-300'
-          }`}
-        >
-          {footer}
-        </Text>
-      )}
+        <Pressable onPress={() => Linking.openURL(url)}>
+          <Text className={`text-xs underline ${titleColor}`}>
+            open on Solana Explorer
+          </Text>
+        </Pressable>
+        {footer && (
+          <Text className={`text-xs mt-2 ${bodyColor}`}>{footer}</Text>
+        )}
+      </Card>
     </View>
   )
 }
 
-function ErrorPanel({ message }: { message: string }) {
+function ErrorCard({ message }: { message: string }) {
   return (
-    <View className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-900 rounded-xl p-4 mb-4">
-      <Text className="text-red-800 dark:text-red-200 font-semibold mb-1">
-        Error
-      </Text>
-      <Text className="text-red-700 dark:text-red-300 text-xs">{message}</Text>
+    <View className="mb-4">
+      <Card padding="md">
+        <Text className="text-red-300 font-semibold mb-1">Error</Text>
+        <Text className="text-gray-300 text-xs">{message}</Text>
+      </Card>
     </View>
   )
 }
@@ -414,34 +369,20 @@ function Section({
   children: React.ReactNode
 }) {
   return (
-    <View className="mb-6">
-      <Text className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2 font-semibold">
+    <View className="mb-5">
+      <Text className="text-xs uppercase tracking-wider text-gray-400 mb-2 font-semibold">
         {title}
       </Text>
-      <View className="bg-gray-50 dark:bg-gray-900 rounded-xl p-4">
-        {children}
-      </View>
+      {children}
     </View>
   )
 }
 
-function Pair({
-  k,
-  v,
-  mono,
-}: {
-  k: string
-  v: string
-  mono?: boolean
-}) {
+function Pair({ k, v }: { k: string; v: string }) {
   return (
     <View className="flex-row justify-between py-1.5">
-      <Text className="text-gray-600 dark:text-gray-400 text-sm">{k}</Text>
-      <Text
-        className={`text-gray-900 dark:text-white text-sm ${mono ? 'font-mono' : 'font-medium'}`}
-      >
-        {v}
-      </Text>
+      <Text className="text-gray-400 text-sm">{k}</Text>
+      <Text className="text-white text-sm font-medium">{v}</Text>
     </View>
   )
 }
