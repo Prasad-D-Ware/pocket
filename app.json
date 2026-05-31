@@ -13,7 +13,8 @@
     },
     "plugins": [
       "expo-router",
-      "expo-sqlite"
+      "expo-sqlite",
+      "llama.rn"
     ]
   }
 }

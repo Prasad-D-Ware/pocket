@@ -88,8 +88,19 @@ export default function Home() {
           </Text>
         </Pressable>
       </Link>
-      <Text className="text-xs text-gray-500 dark:text-gray-400 mb-10">
+      <Text className="text-xs text-gray-500 dark:text-gray-400 mb-6">
         Open vault + push on-chain policy (Keystore-signed Anchor)
+      </Text>
+
+      <Link href="/llm-test" asChild>
+        <Pressable className="bg-indigo-600 px-8 py-4 rounded-xl active:bg-indigo-700 mb-2">
+          <Text className="text-white font-bold text-base">
+            LLM Test
+          </Text>
+        </Pressable>
+      </Link>
+      <Text className="text-xs text-gray-500 dark:text-gray-400 mb-10">
+        Download SmolLM2-360M + on-device inference
       </Text>
 
       <View className="items-center">
