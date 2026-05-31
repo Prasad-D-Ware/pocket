@@ -89,10 +89,10 @@ export default function Inbox() {
       )}
 
       <View className="mt-6">
-        <View className="flex-row items-center justify-between mb-2">
-          <Text className="text-xs uppercase tracking-wider text-gray-400 font-semibold">
-            Activity
-          </Text>
+        <Text className="text-xs uppercase tracking-wider text-gray-400 font-semibold mb-2">
+          Activity
+        </Text>
+        <View className="mb-2">
           <FilterDropdown value={filter} onChange={setFilter} />
         </View>
         {visible.length === 0 ? (
