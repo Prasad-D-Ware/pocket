@@ -1,4 +1,5 @@
 import { TextInput, type TextInputProps, Text, View } from 'react-native'
+import { COLORS, RADIUS } from './tokens'
 
 export type TextFieldProps = TextInputProps & {
   label?: string
@@ -11,11 +12,11 @@ export function TextField({
   helper,
   error,
   multiline,
-  className,
+  style,
   ...inputProps
 }: TextFieldProps) {
   return (
-    <View className="mb-3">
+    <View style={{ marginBottom: 12 }}>
       {label && (
         <Text className="text-xs uppercase tracking-wider text-gray-400 mb-1.5 font-semibold">
           {label}
@@ -24,10 +25,24 @@ export function TextField({
       <TextInput
         {...inputProps}
         multiline={multiline}
-        placeholderTextColor="#71717A"
+        placeholderTextColor={COLORS.textFaint}
         accessibilityLabel={label}
         accessibilityHint={helper}
-        className={`bg-[#14141C] border border-white/[0.08] rounded-xl px-3 py-3 text-white text-base ${multiline ? 'min-h-[80px]' : ''} ${error ? 'border-red-500' : ''} ${className ?? ''}`}
+        style={[
+          {
+            backgroundColor: COLORS.surface,
+            borderWidth: 1,
+            borderColor: error ? COLORS.negative : 'rgba(255,255,255,0.08)',
+            borderRadius: RADIUS.control,
+            paddingHorizontal: 12,
+            paddingVertical: 12,
+            color: COLORS.text,
+            fontSize: 16,
+            minHeight: multiline ? 80 : undefined,
+            textAlignVertical: multiline ? 'top' : 'center',
+          },
+          style,
+        ]}
       />
       {(helper || error) && (
         <Text

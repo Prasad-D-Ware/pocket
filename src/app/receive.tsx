@@ -33,7 +33,14 @@ export default function Receive() {
         <Text className="text-3xl font-extrabold text-white">Receive</Text>
         <Pressable
           onPress={() => router.back()}
-          className="w-10 h-10 rounded-full bg-white/5 items-center justify-center active:bg-white/10"
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 999,
+            backgroundColor: 'rgba(255,255,255,0.06)',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
           <Feather name="x" size={18} color="#FAFAFA" />
         </Pressable>

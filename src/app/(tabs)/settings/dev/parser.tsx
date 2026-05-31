@@ -273,17 +273,26 @@ function BenchRowView({ row }: { row: BenchRow }) {
   const colorClass = row.passed ? 'text-emerald-300' : 'text-red-300'
   const icon = row.passed ? '✓' : '✗'
   return (
-    <View className="border border-white/[0.08] rounded-md p-2 mb-1 bg-white/[0.02]">
+    <View
+      style={{
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.08)',
+        backgroundColor: 'rgba(255,255,255,0.02)',
+        borderRadius: 6,
+        padding: 8,
+        marginBottom: 4,
+      }}
+    >
       <Text className={`text-xs mb-0.5 ${colorClass}`}>
         {icon}{' '}
         <Text className="text-white">{row.prompt}</Text>
       </Text>
-      <Text className="text-gray-500 text-[10px]">
+      <Text style={{ color: '#71717A', fontSize: 10 }}>
         expected: {row.expected} · got: {row.actual} · {row.durationMs}ms
       </Text>
       {!row.passed && row.raw && (
         <Text
-          className="text-gray-400 text-[10px] font-mono mt-0.5"
+          style={{ color: '#A1A1AA', fontSize: 10, marginTop: 2, fontFamily: 'monospace' }}
           numberOfLines={2}
         >
           {row.raw}

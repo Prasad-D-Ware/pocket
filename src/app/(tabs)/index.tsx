@@ -179,7 +179,15 @@ function QuickAction({
   return (
     <Pressable
       onPress={onPress}
-      className="flex-1 bg-[#14141C] border border-white/[0.06] rounded-2xl py-4 items-center active:opacity-80 active:scale-[0.98]"
+      style={{
+        flex: 1,
+        backgroundColor: '#14141C',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.06)',
+        borderRadius: 16,
+        paddingVertical: 16,
+        alignItems: 'center',
+      }}
     >
       <Feather name={icon as never} size={20} color="#8B5CF6" />
       <Text className="text-white text-xs font-semibold mt-2">{label}</Text>

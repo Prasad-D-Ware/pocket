@@ -368,8 +368,8 @@ function bytesLabel(b: number): string {
 function ProgressBar({ fraction }: { fraction: number }) {
   const pct = Math.max(0, Math.min(1, fraction)) * 100
   return (
-    <View className="h-3 bg-white/10 rounded-full overflow-hidden">
-      <View className="h-3 bg-violet-500" style={{ width: `${pct}%` }} />
+    <View style={{ height: 12, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 999, overflow: 'hidden' }}>
+      <View style={{ height: 12, backgroundColor: '#8B5CF6', width: `${pct}%` }} />
     </View>
   )
 }

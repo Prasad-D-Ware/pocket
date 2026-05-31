@@ -22,7 +22,13 @@ export function EmptyState({ icon, title, body, cta }: EmptyStateProps) {
       {cta && (
         <Pressable
           onPress={cta.onPress}
-          className="mt-4 px-4 py-2 rounded-xl bg-violet-500/15 active:bg-violet-500/25"
+          style={{
+            marginTop: 16,
+            paddingHorizontal: 16,
+            paddingVertical: 8,
+            borderRadius: 12,
+            backgroundColor: 'rgba(139,92,246,0.15)',
+          }}
         >
           <Text className="text-violet-300 text-sm font-semibold">
             {cta.label}

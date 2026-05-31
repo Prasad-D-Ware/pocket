@@ -168,12 +168,19 @@ function FilterDropdown({
         <Pressable
           key={f}
           onPress={() => onChange(f)}
-          className={`px-2.5 py-1 rounded-full ${
-            value === f ? 'bg-violet-500/20' : 'active:bg-white/5'
-          }`}
+          style={{
+            paddingHorizontal: 10,
+            paddingVertical: 4,
+            borderRadius: 999,
+            backgroundColor: value === f ? 'rgba(139,92,246,0.2)' : 'transparent',
+          }}
         >
           <Text
-            className={`text-xs font-semibold ${value === f ? 'text-violet-300' : 'text-gray-500'}`}
+            style={{
+              fontSize: 12,
+              fontWeight: '600',
+              color: value === f ? '#C4B5FD' : '#71717A',
+            }}
           >
             {f}
           </Text>

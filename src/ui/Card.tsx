@@ -1,4 +1,5 @@
-import { View } from 'react-native'
+import { View, type ViewStyle } from 'react-native'
+import { COLORS, RADIUS } from './tokens'
 
 export type CardProps = {
   variant?: 'default' | 'elevated' | 'accent'
@@ -6,21 +7,23 @@ export type CardProps = {
   children: React.ReactNode
 }
 
-export function Card({
-  variant = 'default',
-  padding = 'md',
-  children,
-}: CardProps) {
-  const bg = {
-    default: 'bg-[#14141C] border border-white/[0.06]',
-    elevated: 'bg-[#1E1E2A] border border-white/[0.12]',
-    accent: 'bg-violet-500/[0.12] border border-violet-500/30',
-  }[variant]
-  const pad = {
-    none: '',
-    sm: 'p-3',
-    md: 'p-4',
-    lg: 'p-5',
-  }[padding]
-  return <View className={`${bg} ${pad} rounded-2xl`}>{children}</View>
+const VARIANT_STYLE: Record<NonNullable<CardProps['variant']>, ViewStyle> = {
+  default: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border },
+  elevated: { backgroundColor: COLORS.surface2, borderWidth: 1, borderColor: COLORS.borderStrong },
+  accent: { backgroundColor: 'rgba(139,92,246,0.12)', borderWidth: 1, borderColor: 'rgba(139,92,246,0.3)' },
+}
+
+const PAD: Record<NonNullable<CardProps['padding']>, number> = {
+  none: 0,
+  sm: 12,
+  md: 16,
+  lg: 20,
+}
+
+export function Card({ variant = 'default', padding = 'md', children }: CardProps) {
+  return (
+    <View style={[VARIANT_STYLE[variant], { padding: PAD[padding], borderRadius: RADIUS.card }]}>
+      {children}
+    </View>
+  )
 }

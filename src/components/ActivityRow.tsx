@@ -21,7 +21,7 @@ export function ActivityRow({ row }: { row: InboxRow }) {
     : null
 
   return (
-    <View className="py-3 border-b border-white/[0.04] last:border-0">
+    <View style={{ paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.04)' }}>
       <View className="flex-row items-start gap-3">
         <Feather name={meta.icon as never} size={16} color={meta.color} style={{ marginTop: 2 }} />
         <View className="flex-1">

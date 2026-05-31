@@ -7,19 +7,28 @@ export type PillProps = {
   children: React.ReactNode
 }
 
+const TONE = {
+  neutral: { bg: 'rgba(255,255,255,0.06)', fg: '#D4D4D8' },
+  ok:      { bg: 'rgba(16,185,129,0.15)',  fg: '#6EE7B7' },
+  warn:    { bg: 'rgba(245,158,11,0.15)',  fg: '#FCD34D' },
+  bad:     { bg: 'rgba(239,68,68,0.15)',   fg: '#FCA5A5' },
+  info:    { bg: 'rgba(59,130,246,0.15)',  fg: '#93C5FD' },
+  accent:  { bg: 'rgba(139,92,246,0.15)',  fg: '#C4B5FD' },
+} as const
+
 export function Pill({ tone = 'neutral', children }: PillProps) {
-  const cls = {
-    neutral: 'bg-white/5 text-gray-300',
-    ok: 'bg-emerald-500/15 text-emerald-300',
-    warn: 'bg-amber-500/15 text-amber-300',
-    bad: 'bg-red-500/15 text-red-300',
-    info: 'bg-blue-500/15 text-blue-300',
-    accent: 'bg-violet-500/15 text-violet-300',
-  }[tone]
-  const [bg, fg] = cls.split(' ')
+  const { bg, fg } = TONE[tone]
   return (
-    <View className={`${bg} px-2.5 py-1 rounded-full self-start`}>
-      <Text className={`${fg} text-xs font-semibold`}>{children}</Text>
+    <View
+      style={{
+        backgroundColor: bg,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 999,
+        alignSelf: 'flex-start',
+      }}
+    >
+      <Text style={{ color: fg, fontSize: 12, fontWeight: '600' }}>{children}</Text>
     </View>
   )
 }

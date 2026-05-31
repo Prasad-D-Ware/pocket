@@ -93,7 +93,12 @@ export default function Pay() {
           <Pressable
             key={ex}
             onPress={() => setText(ex)}
-            className="bg-white/5 px-3 py-2 rounded-full active:opacity-60"
+            style={{
+              backgroundColor: 'rgba(255,255,255,0.06)',
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+              borderRadius: 999,
+            }}
           >
             <Text className="text-gray-300 text-xs">{ex}</Text>
           </Pressable>
