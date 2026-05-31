@@ -97,7 +97,7 @@ export default function Home() {
           onPress={() => router.push('/pay')}
         />
         <QuickAction
-          icon="qr-code"
+          icon="arrow-down-left"
           label="Receive"
           onPress={() => router.push('/receive')}
         />
