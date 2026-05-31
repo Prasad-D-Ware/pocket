@@ -9,6 +9,7 @@
     "anchor",
     "tools",
     "src/policy/__tests__",
-    "src/inbox/__tests__"
+    "src/inbox/__tests__",
+    "src/llm/__tests__"
   ]
 }

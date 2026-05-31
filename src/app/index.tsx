@@ -99,8 +99,19 @@ export default function Home() {
           </Text>
         </Pressable>
       </Link>
-      <Text className="text-xs text-gray-500 dark:text-gray-400 mb-10">
+      <Text className="text-xs text-gray-500 dark:text-gray-400 mb-6">
         Download SmolLM2-360M + on-device inference
+      </Text>
+
+      <Link href="/parser-test" asChild>
+        <Pressable className="bg-violet-600 px-8 py-4 rounded-xl active:bg-violet-700 mb-2">
+          <Text className="text-white font-bold text-base">
+            Intent Parser
+          </Text>
+        </Pressable>
+      </Link>
+      <Text className="text-xs text-gray-500 dark:text-gray-400 mb-10">
+        Grammar-constrained sentence → Intent + 20-prompt benchmark
       </Text>
 
       <View className="items-center">
