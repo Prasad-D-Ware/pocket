@@ -101,7 +101,7 @@ User policies:
                           │                         │
                           ▼                         ▼
                   ┌──────────────────────────────────────────────────┐
-                  │  Solana devnet  (Helius RPC)                     │
+                  │  Solana devnet  (api.devnet.solana.com)          │
                   │   • pocket_vault Anchor program                  │
                   │     ID: jt6kDwFrRiZdgGZiDdD3o5jLq9NfNN8MWyC1BXC1pXu │
                   │   • x402-paid endpoints (e.g. api.helius.dev)    │
@@ -220,7 +220,7 @@ First boot: ~3–5 min (Expo prebuild). Subsequent runs are fast.
    Settings → Developer → LLM Test → tap **Download model**. SmolLM2-360M-Instruct Q4_K_M is now cached locally.
 
 3. **Fund your wallet**  
-   Settings → Developer → Send test (devnet) → tap **Airdrop**. 5 devnet SOL + 10 fakeUSDC arrive instantly.
+   Settings → Developer → Send test (devnet) → tap **Airdrop**. 0.5 devnet SOL arrives instantly.
 
 4. **Open a vault & set policy**  
    Settings → Vault status → tap **Open vault** → Settings → On-chain policy → tap **Set policy** (e.g., 1 USDC max per tx).
@@ -241,8 +241,8 @@ Every layer is testable end-to-end:
 
 | Layer | Test | Evidence |
 |-------|------|----------|
-| **PolicyGuard** | `npm test` | 70 unit tests, pure-TS, no device required |
-| **Decoder** | `npm test` | Fixture txs: SOL transfer, USDC transfer, vault deposit/withdraw, x402 payment |
+| **PolicyGuard** | `npm test` | 28 unit tests in guard.test.ts, pure-TS, no device required |
+| **Decoder** | `npm test` | 228-line fixture suite: SOL transfer, USDC transfer, vault deposit/withdraw, x402 payment |
 | **Anchor program** | `cd anchor && anchor test` | Allow + deny paths on local validator; live on devnet |
 | **Keystore signer** | In-app → Settings → Developer → Keystore signer test | Generate + sign + `tweetnacl.sign.detached.verify` |
 | **x402 client** | In-app → Settings → Developer → x402 paid request | Direct call to facilitator or test endpoint |
@@ -306,8 +306,8 @@ Every layer is testable end-to-end:
 | **Roadmap & priorities** | [`docs/NEXT_STEPS.md`](./docs/NEXT_STEPS.md) |
 | **Design & spec** | [`docs/superpowers/specs/`](./docs/superpowers/) |
 | **Program ID (devnet)** | `jt6kDwFrRiZdgGZiDdD3o5jLq9NfNN8MWyC1BXC1pXu` |
-| **Devnet RPC** | Helius (configured in `src/anchor/constants.ts`) |
-| **Sample end-to-end tx** | [View on Solana Explorer](https://explorer.solana.com/tx/3YJiYN7fddnq...qKB8tC?cluster=devnet) |
+| **Devnet RPC** | `https://api.devnet.solana.com` (configured in `src/anchor/constants.ts`) |
+| **Verify on-chain** | Inbox tab → tap any signed row → Solana Explorer link opens to show the actual tx |
 
 ### Run tests
 
