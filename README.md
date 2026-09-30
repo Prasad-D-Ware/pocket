@@ -222,14 +222,14 @@ First boot: ~3–5 min (Expo prebuild). Subsequent runs are fast.
 3. **Fund your wallet with SOL**  
    Settings → Developer → Send test (devnet) → tap **Airdrop**. Requests 0.5 devnet SOL. (Devnet airdrops are rate-limited; may take a few seconds or fail. Retry if needed.)
 
-4. **Get fakeUSDC** (required for step 5's USDC example)  
-   `cd anchor && anchor test` runs the test suite, which mints fakeUSDC to your authority's token account. Without this step, step 5 will use the SOL-only example.
+4. **Get fakeUSDC** (required for step 6's payment example)  
+   `cd tools/x402-server && npm run mint-to -- <your-address>` mints fakeUSDC to your token account on devnet. Replace `<your-address>` with the address from step 1.
 
 5. **Open a vault & set policy**  
-   Settings → Vault status → tap **Open vault** → Settings → On-chain policy → tap **Set policy**. Example: 1 USDC max per tx (if you ran step 4), or 0.0001 SOL per tx (always available).
+   Settings → Vault status → tap **Open vault** → Settings → On-chain policy → tap **Set policy**. The form sets a USDC limit (e.g., 1 USDC max per tx). Step 4 must complete first so fakeUSDC is available.
 
 6. **Send your first AI-signed payment**  
-   Pay tab → type `pay api.helius.dev 0.0001 SOL for a query` → tap **Send** → 3–5 seconds inference → real Ed25519 signature → Solana devnet confirmation. (Use USDC if fakeUSDC is available.)
+   Pay tab → type `pay api.helius.dev 0.5 USDC for a query` → tap **Send** → 3–5 seconds inference → real Ed25519 signature → Solana devnet confirmation.
 
 7. **Verify on-chain**  
    Inbox tab → tap the signed row → Solana Explorer link opens showing the actual tx with your real Ed25519 signature.
@@ -245,7 +245,7 @@ Every layer is testable end-to-end:
 | Layer | Test | Evidence |
 |-------|------|----------|
 | **PolicyGuard** | `npm test` | 28 unit tests in guard.test.ts, pure-TS, no device required |
-| **Decoder** | `npm test` | 228-line fixture suite: SOL transfer, USDC transfer, vault deposit/withdraw, x402 payment |
+| **Decoder** | `npm test` | 12 fixture tests: SOL transfer, USDC transfer, vault deposit/withdraw, x402 payment |
 | **Anchor program** | `cd anchor && anchor test` | Allow + deny paths on local validator; live on devnet |
 | **Keystore signer** | In-app → Settings → Developer → Keystore signer test | Generate + sign + `tweetnacl.sign.detached.verify` |
 | **x402 client** | In-app → Settings → Developer → x402 paid request | Direct call to facilitator or test endpoint |
