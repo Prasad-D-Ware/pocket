@@ -220,13 +220,13 @@ First boot: ~3–5 min (Expo prebuild). Subsequent runs are fast.
    Settings → Developer → LLM Test → tap **Download model**. SmolLM2-360M-Instruct Q4_K_M is now cached locally.
 
 3. **Fund your wallet with SOL**  
-   Settings → Developer → Send test (devnet) → tap **Airdrop**. 0.5 devnet SOL arrives instantly.
+   Settings → Developer → Send test (devnet) → tap **Airdrop**. Requests 0.5 devnet SOL. (Devnet airdrops are rate-limited; may take a few seconds or fail. Retry if needed.)
 
-4. **Get fakeUSDC** (optional, for USDC examples)  
-   `cd anchor && anchor test` — the test suite mints fakeUSDC to your authority's token account. Subsequent commands will mint more via `devnet-deposit.ts` if needed.
+4. **Get fakeUSDC** (required for step 5's USDC example)  
+   `cd anchor && anchor test` runs the test suite, which mints fakeUSDC to your authority's token account. Without this step, step 5 will use the SOL-only example.
 
 5. **Open a vault & set policy**  
-   Settings → Vault status → tap **Open vault** → Settings → On-chain policy → tap **Set policy** (e.g., 1 USDC max per tx, or use SOL if fakeUSDC unavailable).
+   Settings → Vault status → tap **Open vault** → Settings → On-chain policy → tap **Set policy**. Example: 1 USDC max per tx (if you ran step 4), or 0.0001 SOL per tx (always available).
 
 6. **Send your first AI-signed payment**  
    Pay tab → type `pay api.helius.dev 0.0001 SOL for a query` → tap **Send** → 3–5 seconds inference → real Ed25519 signature → Solana devnet confirmation. (Use USDC if fakeUSDC is available.)
