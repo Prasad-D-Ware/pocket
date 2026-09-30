@@ -214,7 +214,7 @@ First boot: ~3–5 min (Expo prebuild). Subsequent runs are fast.
 ### Walk the end-to-end pipeline (2 minutes per step)
 
 1. **Generate key & view address**  
-   Settings → Developer → Keystore signer test → tap **Generate key**. Your hardware-backed Ed25519 address appears.
+   Settings → Developer → Keystore signer test → tap **Run signature verification**. Your hardware-backed Ed25519 address is generated (or loaded if it exists) and displayed.
 
 2. **Download the LLM model** (~271 MB, one-time)  
    Settings → Developer → LLM Test → tap **Download model**. SmolLM2-360M-Instruct Q4_K_M is now cached locally.
