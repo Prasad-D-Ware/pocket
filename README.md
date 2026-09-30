@@ -211,7 +211,7 @@ npm run android      # first run prebuilds android/ from app.json
 
 First boot: ~3–5 min (Expo prebuild). Subsequent runs are fast.
 
-### Walk the end-to-end pipeline (2 minutes per step)
+### Walk the end-to-end pipeline (2-3 minutes per step)
 
 1. **Generate key & view address**  
    Settings → Developer → Keystore signer test → tap **Run signature verification**. Your hardware-backed Ed25519 address is generated (or loaded if it exists) and displayed.
@@ -219,17 +219,20 @@ First boot: ~3–5 min (Expo prebuild). Subsequent runs are fast.
 2. **Download the LLM model** (~271 MB, one-time)  
    Settings → Developer → LLM Test → tap **Download model**. SmolLM2-360M-Instruct Q4_K_M is now cached locally.
 
-3. **Fund your wallet**  
+3. **Fund your wallet with SOL**  
    Settings → Developer → Send test (devnet) → tap **Airdrop**. 0.5 devnet SOL arrives instantly.
 
-4. **Open a vault & set policy**  
-   Settings → Vault status → tap **Open vault** → Settings → On-chain policy → tap **Set policy** (e.g., 1 USDC max per tx).
+4. **Get fakeUSDC** (optional, for USDC examples)  
+   `cd anchor && anchor test` — the test suite mints fakeUSDC to your authority's token account. Subsequent commands will mint more via `devnet-deposit.ts` if needed.
 
-5. **Send your first AI-signed payment**  
-   Pay tab → type `pay api.helius.dev 0.5 USDC for a query` → tap **Send** → 3–5 seconds inference → real Ed25519 signature → Solana devnet confirmation.
+5. **Open a vault & set policy**  
+   Settings → Vault status → tap **Open vault** → Settings → On-chain policy → tap **Set policy** (e.g., 1 USDC max per tx, or use SOL if fakeUSDC unavailable).
 
-6. **Verify on-chain**  
-   Inbox tab → tap the signed row → Solana Explorer link opens showing the actual tx.
+6. **Send your first AI-signed payment**  
+   Pay tab → type `pay api.helius.dev 0.0001 SOL for a query` → tap **Send** → 3–5 seconds inference → real Ed25519 signature → Solana devnet confirmation. (Use USDC if fakeUSDC is available.)
+
+7. **Verify on-chain**  
+   Inbox tab → tap the signed row → Solana Explorer link opens showing the actual tx with your real Ed25519 signature.
 
 **That's the full pipeline.** Every part—LLM, policy check, signing, payment—is real and runs on your device.
 
