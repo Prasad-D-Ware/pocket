@@ -307,7 +307,7 @@ Every layer is testable end-to-end:
 | **Repository** | [`Prasad-D-Ware/pocket`](https://github.com/Prasad-D-Ware/pocket) |
 | **Landing site** | [`pocket-site`](https://github.com/Prasad-D-Ware/pocket-site) — deployed to Vercel |
 | **Roadmap & priorities** | [`docs/NEXT_STEPS.md`](./docs/NEXT_STEPS.md) |
-| **Design & spec** | [`docs/superpowers/specs/`](./docs/superpowers/) |
+| **Design & spec** | [`docs/superpowers/specs/`](./docs/superpowers/specs/) |
 | **Program ID (devnet)** | `jt6kDwFrRiZdgGZiDdD3o5jLq9NfNN8MWyC1BXC1pXu` |
 | **Devnet RPC** | `https://api.devnet.solana.com` (configured in `src/anchor/constants.ts`) |
 | **Verify on-chain** | Inbox tab → tap any signed row → Solana Explorer link opens to show the actual tx |
