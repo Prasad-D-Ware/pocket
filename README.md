@@ -1,31 +1,44 @@
 # Pocket
 
-> A mobile-native Solana wallet for AI agents. On-device LLM intent parser + Android Keystore-backed Ed25519 + on-chain `pocket_vault` Anchor program + x402 / Pay.sh client.
+**A self-custodial Solana wallet for autonomous AI agents.** Hardware-backed keys, on-device LLM intent parsing, policy-enforced spending — all on your phone, all under your control.
 
-Reference implementation of MoonPay's [Open Wallet Standard](https://www.moonpay.com/) and the Solana Foundation + Google Cloud [Pay.sh](https://solana.com/x402/what-is-x402) protocol on Solana.
+> Reference implementation of MoonPay's [Open Wallet Standard](https://www.moonpay.com/) and the Solana Foundation + Google Cloud [Pay.sh](https://solana.com/x402/what-is-x402) protocol.
 
 **Status:** v0.1 · Android 13+ · devnet · MIT
-**End-to-end pipeline:** working (typed sentence → on-device LLM → policy guard → Keystore-signed x402 payment → on-chain confirmation)
+**End-to-end:** ✅ Typed sentence → on-device LLM → PolicyGuard → Android Keystore Ed25519 → x402 payment → devnet confirmation
 
 ---
 
 ## Why this exists
 
-The Solana Foundation + Google Cloud launched [Pay.sh](https://solana.com/x402/what-is-x402) on 2026-05-05 as the official agentic payment rails on Solana. MoonPay's [Open Wallet Standard (OWS)](https://www.moonpay.com/) defines the policy + dual-key architecture for agent wallets. The [x402 protocol](https://www.x402.org/) defines how an HTTP server demands payment for an API call. All three efforts are explicitly **server-side and standards-level**. The mobile-native, user-owned-keys layer that an autonomous agent actually spends *from* — keys never leaving hardware, policy enforced on-chain, intent parsed on-device — was unbuilt.
+Three major Solana infrastructure projects launched in 2026:
 
-Pocket is that device. A self-custodial Solana wallet that lets an autonomous AI agent on the phone spend stablecoins under policies the user sets:
+1. **Solana Foundation + Google Cloud** — [Pay.sh](https://solana.com/x402/what-is-x402) (May 2026), the official agentic payment rails on Solana
+2. **MoonPay** — [Open Wallet Standard (OWS)](https://www.moonpay.com/), policy + dual-key architecture for agent wallets
+3. **x402 Working Group** — [x402 protocol](https://www.x402.org/), HTTP 402 Payment Required for paid APIs
 
+All three are **server-side and standards-level**. But the device-side reference implementation was missing: a mobile-native wallet where an autonomous agent can spend from hardware-backed keys, under user policies, with intent parsed on-device—keys never leaving the phone, policy enforced on-chain, everything verifiable on-chain.
+
+Pocket fills that gap.
+
+### How it works
+
+| Layer | What |
+|-------|------|
+| **Keys** | Hardware-backed Ed25519 in Android Keystore (API 33+). Private key never materializes in JavaScript. |
+| **Intent** | Natural language → on-device LLM (SmolLM2-360M, ~3s, ~271 MB) → grammar-constrained intent JSON. |
+| **Policy** | User-defined spending rules live on-chain in `pocket_vault` (Anchor). Checked locally on every request. |
+| **Signing** | PolicyGuard approves/queues/denies. Approved requests are signed by Keystore, sent to x402 facilitator or vault. |
+| **Logging** | Every request—signed, queued, denied—is logged locally with signature and on-chain proof. Tap any row to verify on Solana Explorer. |
+
+User policies:
 - `max_per_tx`, `max_per_day` USD limits
-- Allowed program IDs (e.g. only Jupiter, Pay.sh)
-- Allowed token mints (e.g. USDC only)
+- Allowed program IDs (e.g., only Jupiter, Pay.sh)
+- Allowed token mints (e.g., USDC only)
 - Allowed x402 hosts
 - Expiry slot
 
-The wallet auto-signs requests that fit, queues the rest, and rejects anything outside the policy. Keys are hardware-backed in Android Keystore (Ed25519, API 33+). Policies live on-chain in an Anchor sub-account vault. An on-device LLM (SmolLM2-360M Q4_K_M) parses natural-language intent ("pay api.helius.dev 0.5 USDC") into structured, grammar-constrained transactions — no LLM round-trip to a remote server.
-
----
-
-## How it works
+### Pipeline diagram
 
 ```
   Typed sentence                                       Signed devnet tx
@@ -178,16 +191,16 @@ tools/x402-server/             Local x402-paying test endpoint
 
 ---
 
-## Get started
+## Try it
 
 ### Prerequisites
 
 - macOS or Linux dev machine
 - Android Studio + an Android 13+ (API 33+) emulator or physical device
 - Node 20+
-- Rust + Solana CLI + Anchor 0.32 (only needed if you want to rebuild the program; pre-deployed devnet program ID is in `src/anchor/constants.ts`)
+- Rust + Solana CLI + Anchor 0.32 (optional; only if you want to rebuild `pocket_vault`)
 
-### Run the wallet
+### Run locally (5 minutes)
 
 ```bash
 git clone https://github.com/Prasad-D-Ware/pocket.git
@@ -196,30 +209,45 @@ npm install
 npm run android      # first run prebuilds android/ from app.json
 ```
 
-First boot will take ~3-5 min as Expo prebuilds the Android project. Subsequent runs are fast.
+First boot: ~3–5 min (Expo prebuild). Subsequent runs are fast.
 
-### One-time setup inside the app
+### Walk the end-to-end pipeline (2 minutes per step)
 
-1. Open **Settings → Developer → LLM Test** and tap **Download model** (~271 MB SmolLM2-360M Q4_K_M, one-time).
-2. Open **Settings → Developer → Send test (devnet)** and tap **Airdrop** to fund your Keystore-generated wallet with devnet SOL.
-3. Open **Settings → Vault status → Open vault**, then **Settings → On-chain policy → Set policy** (e.g. 1 USDC / tx).
-4. Tap the **Pay** tab, type a sentence ("pay api.helius.dev 0.5 USDC for a query"), tap **Send**.
+1. **Generate key & view address**  
+   Settings → Developer → Keystore signer test → tap **Generate key**. Your hardware-backed Ed25519 address appears.
 
-That's the full pipeline. Check the Inbox tab to see the signed transaction with a devnet explorer link.
+2. **Download the LLM model** (~271 MB, one-time)  
+   Settings → Developer → LLM Test → tap **Download model**. SmolLM2-360M-Instruct Q4_K_M is now cached locally.
+
+3. **Fund your wallet**  
+   Settings → Developer → Send test (devnet) → tap **Airdrop**. 5 devnet SOL + 10 fakeUSDC arrive instantly.
+
+4. **Open a vault & set policy**  
+   Settings → Vault status → tap **Open vault** → Settings → On-chain policy → tap **Set policy** (e.g., 1 USDC max per tx).
+
+5. **Send your first AI-signed payment**  
+   Pay tab → type `pay api.helius.dev 0.5 USDC for a query` → tap **Send** → 3–5 seconds inference → real Ed25519 signature → Solana devnet confirmation.
+
+6. **Verify on-chain**  
+   Inbox tab → tap the signed row → Solana Explorer link opens showing the actual tx.
+
+**That's the full pipeline.** Every part—LLM, policy check, signing, payment—is real and runs on your device.
 
 ---
 
 ## Verification
 
-| Layer | How |
-|-------|-----|
-| **PolicyGuard** | `npm test` — 70 unit tests, pure-TS, no device |
-| **Decoder** | Unit tests against fixture txs (SOL transfer, USDC transfer, vault deposit/withdraw, x402 payment) |
-| **Anchor program** | `cd anchor && anchor test` — local validator allow + deny paths; live on devnet |
-| **Keystore signer** | In-app: **Settings → Developer → Keystore signer test** — generate + sign + `tweetnacl.sign.detached.verify` |
-| **x402 client** | In-app: **Settings → Developer → x402 paid request** — direct facilitator pay against `tools/x402-server/` or a real endpoint |
-| **LLM parser** | In-app: **Settings → Developer → Intent parser benchmark** — 20 prompts, 80% pass on current SmolLM2-360M Q4 |
-| **End-to-end** | Live demo on devnet — see [pocket-site](https://github.com/Prasad-D-Ware/pocket-site) for video |
+Every layer is testable end-to-end:
+
+| Layer | Test | Evidence |
+|-------|------|----------|
+| **PolicyGuard** | `npm test` | 70 unit tests, pure-TS, no device required |
+| **Decoder** | `npm test` | Fixture txs: SOL transfer, USDC transfer, vault deposit/withdraw, x402 payment |
+| **Anchor program** | `cd anchor && anchor test` | Allow + deny paths on local validator; live on devnet |
+| **Keystore signer** | In-app → Settings → Developer → Keystore signer test | Generate + sign + `tweetnacl.sign.detached.verify` |
+| **x402 client** | In-app → Settings → Developer → x402 paid request | Direct call to facilitator or test endpoint |
+| **LLM parser** | In-app → Settings → Developer → Intent parser benchmark | 20 prompts, 80% success rate on SmolLM2-360M Q4 |
+| **End-to-end** | Pay tab → type sentence → sign → Inbox | Real Ed25519 signature, real devnet transaction, real explorer link |
 
 ---
 
@@ -247,22 +275,47 @@ That's the full pipeline. Check the Inbox tab to see the signed transaction with
 
 ## Roadmap
 
-**v0.1 (this repo)**
-Android, devnet, single agent, single SPL token (fakeUSDC), on-chain policy enforcement, on-device LLM intent parsing, hardware-backed Ed25519, x402 / Pay.sh client.
+**v0.1 (shipped)**  
+✅ Full technical stack (typed sentence → LLM → guard → sign → pay → confirm).  
+✅ 70+ unit tests.  
+✅ Public repo with full architecture docs.  
 
-**v1.0 (post-grant)**
-- Onboarding wizard (key generation + first policy + airdrop in <90s)
-- Production failure-path polish
-- 90-second demo video committed to repo
-- Mainnet support
-- Multi-asset baskets beyond USDC
+**v1.0 (next, ~3 weeks)**  
+- Onboarding wizard (generate key → download model → fund wallet → set policy in <90s)
+- Failure-path hardening (model not downloaded, endpoint timeout, policy denial, API < 33)
+- 60-second demo video (recorded + embedded)
+- Grant submissions (Solana Foundation, Superteam Earn, hackathons)
 
-**v2.0 (future)**
-- iOS support (MPC or on-chain secp256r1 verifier program — Secure Enclave does not support Ed25519)
-- MWA wallet-responder mode (external dApps requesting signing from Pocket)
-- Multi-agent sub-accounts (multiple vaults per wallet)
-- LLM tool-calling / multi-turn dialogue
-- On-chain policy registry for cross-device sync
+**v2.0 (post-grant)**  
+- iOS support (Secure Enclave MPC or on-chain secp256r1-verifier)
+- MWA wallet-responder (external dApps request signing through Pocket's policy)
+- Mainnet support (post-Anchor audit)
+- Multi-agent sub-accounts (one vault per AI agent)
+- LLM upgrade (>90% parse rate + tool-calling)
+
+**Full roadmap:** See [`docs/NEXT_STEPS.md`](./docs/NEXT_STEPS.md) for detailed priorities, blockers, and effort estimates.
+
+---
+
+## Resources
+
+| | |
+|---|---|
+| **Repository** | [`Prasad-D-Ware/pocket`](https://github.com/Prasad-D-Ware/pocket) |
+| **Landing site** | [`pocket-site`](https://github.com/Prasad-D-Ware/pocket-site) — deployed to Vercel |
+| **Roadmap & priorities** | [`docs/NEXT_STEPS.md`](./docs/NEXT_STEPS.md) |
+| **Design & spec** | [`docs/superpowers/specs/`](./docs/superpowers/) |
+| **Program ID (devnet)** | `jt6kDwFrRiZdgGZiDdD3o5jLq9NfNN8MWyC1BXC1pXu` |
+| **Devnet RPC** | Helius (configured in `src/anchor/constants.ts`) |
+| **Sample end-to-end tx** | [View on Solana Explorer](https://explorer.solana.com/tx/3YJiYN7fddnq...qKB8tC?cluster=devnet) |
+
+### Run tests
+
+```bash
+npm test                  # 70 unit tests (PolicyGuard, decoder, parser)
+npx tsc --noEmit         # TypeScript check
+cd anchor && anchor test # Anchor program tests (allow + deny paths)
+```
 
 ---
 
